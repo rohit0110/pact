@@ -1,0 +1,209 @@
+I. User Screens
+
+1. Onboarding + Wallet Creation
+
+Screen 1A: Welcome Screen
+
+Logo + tagline
+
+"Continue with Apple" / "Continue with Google"
+
+Screen 1B: Account Setup (Privy SDK Integration)
+
+Wallet creation message (e.g., "Setting up your wallet")
+
+Progress indicator
+
+Background wallet creation with Privy
+
+Screen 1C: Intro Tutorial (3 slides)
+
+How Pact works (Challenge + Stake + Win)
+
+Your crypto wallet powers the app
+
+Start or Join a Pact
+
+2. Home / Dashboard
+
+Screen 2A: Home
+
+Current Pacts (Active + Completed)
+
+"Create New Pact" button
+
+Quick view of Pot size, progress status (On track, At Risk, Out)
+
+Screen 2B: Notification Bell (top right)
+
+Daily reminders
+
+Group nudges
+
+Payout/penalty events
+
+3. Create Pact
+
+Screen 3A: Pact Setup
+
+Pact Name
+
+Stake (Deposit amount)
+
+Duration (7 to 14 days)
+
+Challenge Type (Daily / Cumulative)
+
+Payout Rule (Split Among Winners / Donate to Charity)
+
+Screen 3B: Logging Method
+
+Text input
+
+Photo upload
+
+Apple Health integration (toggle)
+
+Honor system (group vote)
+
+Screen 3C: Charity Selection (if applicable)
+
+Search + Select from Giving Block API
+
+Screen 3D: Invite Friends
+
+Unique link + contacts access
+
+4. Join Pact
+
+Screen 4A: Pact Summary
+
+View rules, creator, pot size, participants
+
+Screen 4B: Deposit Stake
+
+Pay with Apple Pay (via Coinbase Onramp / Stripe)
+
+Pay with Crypto (QR code + address)
+
+Deposit success = join confirmation screen
+
+5. Challenge Progress
+
+Screen 5A: Pact Dashboard
+
+Days left
+
+Pot size
+
+Participants list with statuses
+
+Leaderboard view (color-coded: On Track / At Risk / Out)
+
+Screen 5B: Log Activity (Daily / Final)
+
+Upload proof or sync from Apple Health
+
+Timestamped entry
+
+Activity history log
+
+Screen 5C: Forfeit / Surrender
+
+Confirmation modal: "Are you sure you want to leave?"
+
+Penalty % displayed
+
+6. Voting Flow (if enabled)
+
+Screen 6A: Voting Screen
+
+Display all participants
+
+Vote "Yes" or "No" on completion
+
+7. Payout Summary
+
+Screen 7A: Success Screen
+
+"You completed your Pact!"
+
+Winnings shown with confetti
+
+Screen 7B: Community Fund / Charity Summary (if no winners)
+
+Message and wallet receipt
+
+8. User Profile
+
+Screen 8A: Profile
+
+Photo, handle, stats (success %, pacts completed)
+
+Trophy case
+
+Connected fitness trackers
+
+II. Admin/Backend Panels
+
+1. Pact Monitoring Dashboard
+
+Pact ID, members, status, amount
+
+Trigger payouts
+
+Manage disputes (for flagged activities)
+
+2. Charity Registry Interface
+
+Sync charities from Giving Block
+
+Add verified wallet addresses
+
+3. Community Fund Disbursement Panel
+
+View accumulated funds
+
+Track donations
+
+III. System Design (High Level)
+
+Frontend
+
+React Native for mobile (iOS first)
+
+Firebase / Supabase for auth & realtime DB
+
+Tailwind (React Native Web) for styling
+
+Backend / Infra
+
+Node.js API layer
+
+Smart Contracts:
+
+PactFactory: Deploys new Pact contracts
+
+Pact: Holds funds, tracks rules, automates payout
+
+Wallet creation & mgmt: Privy SDK
+
+Apple HealthKit API
+
+Onramp: Coinbase Pay or Stripe Crypto SDK
+
+File storage: AWS S3 (for image/video logs)
+
+Smart Contract Structure
+
+createPact(name, duration, amount, payoutRule, charityAddress)
+
+joinPact(userAddress, amount)
+
+logProof(userAddress, timestamp, logType)
+
+forfeit(userAddress)
+
+triggerPayout(winnerAddresses)
+
+triggerDonation(charityAddress)
