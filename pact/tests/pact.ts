@@ -13,14 +13,17 @@ describe("pact", () => {
 
   before(async () => {
     // Airdrop SOL to the app_vault and player accounts
-    await program.provider.connection.requestAirdrop(
+    const airdropTx = await program.provider.connection.requestAirdrop(
       app_vault.publicKey,
       100 * anchor.web3.LAMPORTS_PER_SOL
     );
-    await program.provider.connection.requestAirdrop(
+    await program.provider.connection.confirmTransaction(airdropTx);
+
+    const airdropTx2 = await program.provider.connection.requestAirdrop(
       player.publicKey,
       100 * anchor.web3.LAMPORTS_PER_SOL
     );
+    await program.provider.connection.confirmTransaction(airdropTx2);
   });
 
   it("Initializes a challenge pact and creates a vault", async () => {
@@ -31,7 +34,6 @@ describe("pact", () => {
     const verificationType = { screenTime: {} };
     const comparisonOperator = { greaterThanOrEqual: {} };
     const stake = new anchor.BN(1 * anchor.web3.LAMPORTS_PER_SOL);
-    const prizePool = new anchor.BN(10 * anchor.web3.LAMPORTS_PER_SOL);
 
     const [challengePactPDA, _] = anchor.web3.PublicKey.findProgramAddressSync(
       [
@@ -47,6 +49,15 @@ describe("pact", () => {
       program.programId
     );
 
+    const [playerGoalPDA, ___] = anchor.web3.PublicKey.findProgramAddressSync(
+        [
+            Buffer.from("player_profile"),
+            player.publicKey.toBuffer(),
+            challengePactPDA.toBuffer(),
+        ],
+        program.programId
+    );
+
     await program.methods
       .initializeChallengePact(
         name,
@@ -55,17 +66,17 @@ describe("pact", () => {
         goalValue,
         verificationType,
         comparisonOperator,
-        stake,
-        prizePool
+        stake
       )
       .accounts({
         challengePact: challengePactPDA,
         player: player.publicKey,
         appVault: app_vault.publicKey,
         pactVault: pactVaultPDA,
+        playerGoal: playerGoalPDA,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
-      .signers([app_vault, player])
+      .signers([app_vault])
       .rpc();
 
     // Fetch the created accounts
@@ -93,5 +104,80 @@ describe("pact", () => {
 
     const rent = await program.provider.connection.getMinimumBalanceForRentExemption(0);
     assert.equal(pactVaultAccount.lamports, rent, "Vault does not have rent-exempt balance");
+  });
+
+  it("Allows a player to stake on a challenge pact", async () => {
+    const name = "Staking Challenge";
+    const description = "A challenge to test staking";
+    const goalType = { dailySteps: {} };
+    const goalValue = new anchor.BN(5000);
+    const verificationType = { screenTime: {} };
+    const comparisonOperator = { greaterThanOrEqual: {} };
+    const stake = new anchor.BN(2 * anchor.web3.LAMPORTS_PER_SOL);
+
+    const [challengePactPDA, _] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("challenge_pact"),
+        Buffer.from(name),
+        player.publicKey.toBuffer(),
+      ],
+      program.programId
+    );
+
+    const [pactVaultPDA, __] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("pact_vault"), challengePactPDA.toBuffer()],
+      program.programId
+    );
+
+    const [playerGoalPDA, ___] = anchor.web3.PublicKey.findProgramAddressSync(
+        [
+            Buffer.from("player_profile"),
+            player.publicKey.toBuffer(),
+            challengePactPDA.toBuffer(),
+        ],
+        program.programId
+    );
+
+    await program.methods
+      .initializeChallengePact(
+        name,
+        description,
+        goalType,
+        goalValue,
+        verificationType,
+        comparisonOperator,
+        stake
+      )
+      .accounts({
+        challengePact: challengePactPDA,
+        player: player.publicKey,
+        appVault: app_vault.publicKey,
+        pactVault: pactVaultPDA,
+        playerGoal: playerGoalPDA,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .signers([app_vault])
+      .rpc();
+
+    const initialVaultBalance = await program.provider.connection.getBalance(pactVaultPDA);
+
+    await program.methods
+        .stakeAmountForChallengePact(stake)
+        .accounts({
+            challengePact: challengePactPDA,
+            player: player.publicKey,
+            pactVault: pactVaultPDA,
+            playerGoal: playerGoalPDA,
+            appVault: app_vault.publicKey,
+            systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .signers([player])
+        .rpc();
+
+    const playerGoalAccount = await program.account.playerGoalForChallengePact.fetch(playerGoalPDA);
+    assert.isTrue(playerGoalAccount.hasStaked, "Player has not staked");
+
+    const finalVaultBalance = await program.provider.connection.getBalance(pactVaultPDA);
+    assert.equal(finalVaultBalance, initialVaultBalance + stake.toNumber(), "Vault balance did not increase correctly");
   });
 });

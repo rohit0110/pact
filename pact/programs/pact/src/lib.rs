@@ -16,7 +16,7 @@ pub mod pact {
         Ok(())
     }
 
-    pub fn initialize_challenge_pact(ctx: Context<InitializeChallengePact>, name: String, description: String, goal_type: GoalType, goal_value: u64, verification_type: VerificationType, comparison_operator: ComparisonOperator, stake: u64,prize_pool: u64) -> Result<()> {
+    pub fn initialize_challenge_pact(ctx: Context<InitializeChallengePact>, name: String, description: String, goal_type: GoalType, goal_value: u64, verification_type: VerificationType, comparison_operator: ComparisonOperator, stake: u64) -> Result<()> {
         let challenge_pact = &mut ctx.accounts.challenge_pact;
         challenge_pact.name = name;
         challenge_pact.description = description;
@@ -28,8 +28,7 @@ pub mod pact {
         challenge_pact.verification_type = verification_type;
         challenge_pact.comparison_operator = comparison_operator;
         challenge_pact.stake = stake;
-        require!(prize_pool > 0, ErrorCode::PrizePoolMustBeGreaterThanZero);
-        challenge_pact.prize_pool = prize_pool;
+        challenge_pact.prize_pool = 0;
         challenge_pact.participants = Vec::new();
         challenge_pact.participants.push(ctx.accounts.player.key());
 
@@ -93,13 +92,14 @@ pub mod pact {
         let ix = anchor_lang::solana_program::system_instruction::transfer(
             &ctx.accounts.player.key(),
             &ctx.accounts.pact_vault.key(),
-            ctx.accounts.challenge_pact.stake,
+            ctx.accounts.challenge_pact.stake, //right now transferring the stake amount which is common, ideally should be any amount the user wants?
         );
         anchor_lang::solana_program::program::invoke(
             &ix,
             &[ctx.accounts.player.to_account_info(), ctx.accounts.pact_vault.to_account_info()],
         )?;
         ctx.accounts.player_goal.has_staked = true;
+        ctx.accounts.challenge_pact.prize_pool += ctx.accounts.challenge_pact.stake;
         Ok(())
     }
 
@@ -119,6 +119,7 @@ pub struct InitializePlayerProfile<'info> {
     pub player_profile: Account<'info,PlayerProfile>,
     #[account(mut)]
     pub app_vault: Signer<'info>,
+    /// CHECK: Player account is used as a seed for the player profile PDA.
     pub player: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
 }
@@ -150,6 +151,7 @@ pub struct InitializeChallengePact<'info> {
     pub pact_vault: SystemAccount<'info>,
     #[account(mut)]
     pub app_vault: Signer<'info>,
+    /// CHECK: Player account is used as a seed for the challenge pact PDA.
     pub player: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
 }
@@ -168,6 +170,7 @@ pub struct JoinChallengePact<'info> {
     pub player_goal: Account<'info, PlayerGoalForChallengePact>,
     #[account(mut)]
     pub app_vault: Signer<'info>,
+    /// CHECK: Player account is used as a seed for the player goal PDA.
     pub player: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
 }
@@ -188,6 +191,7 @@ pub struct StakeAmountForChallengePact<'info> {
         bump,
     )]
     pub pact_vault: SystemAccount<'info>,
+    /// CHECK: App vault pays the gas fees
     pub app_vault: AccountInfo<'info>,
     #[account(mut)]
     pub player: Signer<'info>,
@@ -200,6 +204,7 @@ pub struct StartChallengePact<'info> {
     pub challenge_pact: Account<'info, ChallengePact>,
     #[account(mut)]
     pub app_vault: Signer<'info>,
+    /// CHECK: Player account is the creator of the pact and need key to match to creator to start it.
     pub player: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
 }
