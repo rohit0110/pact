@@ -1,183 +1,308 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
-import { Pact } from "../target/types/pact";
 import { assert } from "chai";
+import { Pact } from "../target/types/pact";
 
 describe("pact", () => {
   // Configure the client to use the local cluster.
-  anchor.setProvider(anchor.AnchorProvider.env());
+  const provider = anchor.AnchorProvider.env();
+  anchor.setProvider(provider);
 
   const program = anchor.workspace.Pact as Program<Pact>;
+
+  // Generate keypairs for all accounts
   const app_vault = anchor.web3.Keypair.generate();
-  const player = anchor.web3.Keypair.generate();
+  const player1 = anchor.web3.Keypair.generate();
+  const player2 = anchor.web3.Keypair.generate();
+
+  const pactName = "End-to-End Challenge";
+  const stake = new anchor.BN(1 * anchor.web3.LAMPORTS_PER_SOL);
+
+  // Define all the PDAs that will be used in the test
+  let challengePactPDA: anchor.web3.PublicKey;
+  let pactVaultPDA: anchor.web3.PublicKey;
+  let player1ProfilePDA: anchor.web3.PublicKey;
+  let player2ProfilePDA: anchor.web3.PublicKey;
+  let player1GoalPDA: anchor.web3.PublicKey;
+  let player2GoalPDA: anchor.web3.PublicKey;
 
   before(async () => {
-    // Airdrop SOL to the app_vault and player accounts
-    const airdropTx = await program.provider.connection.requestAirdrop(
-      app_vault.publicKey,
-      100 * anchor.web3.LAMPORTS_PER_SOL
-    );
-    await program.provider.connection.confirmTransaction(airdropTx);
+    // Airdrop SOL to all accounts that will be paying for transactions
+    await Promise.all([
+        provider.connection.requestAirdrop(app_vault.publicKey, 5 * anchor.web3.LAMPORTS_PER_SOL),
+        provider.connection.requestAirdrop(player1.publicKey, 5 * anchor.web3.LAMPORTS_PER_SOL),
+        provider.connection.requestAirdrop(player2.publicKey, 5 * anchor.web3.LAMPORTS_PER_SOL),
+    ].map(async (signaturePromise) => {
+        const signature = await signaturePromise;
+        await provider.connection.confirmTransaction(signature, "confirmed");
+    }));
 
-    const airdropTx2 = await program.provider.connection.requestAirdrop(
-      player.publicKey,
-      100 * anchor.web3.LAMPORTS_PER_SOL
-    );
-    await program.provider.connection.confirmTransaction(airdropTx2);
-  });
-
-  it("Initializes a challenge pact and creates a vault", async () => {
-    const name = "Test Challenge";
-    const description = "A test challenge";
-    const goalType = { dailySteps: {} };
-    const goalValue = new anchor.BN(10000);
-    const verificationType = { screenTime: {} };
-    const comparisonOperator = { greaterThanOrEqual: {} };
-    const stake = new anchor.BN(1 * anchor.web3.LAMPORTS_PER_SOL);
-
-    const [challengePactPDA, _] = anchor.web3.PublicKey.findProgramAddressSync(
+    // Calculate PDAs
+    [challengePactPDA] = anchor.web3.PublicKey.findProgramAddressSync(
       [
         Buffer.from("challenge_pact"),
-        Buffer.from(name),
-        player.publicKey.toBuffer(),
+        Buffer.from(pactName),
+        player1.publicKey.toBuffer(),
       ],
       program.programId
     );
 
-    const [pactVaultPDA, __] = anchor.web3.PublicKey.findProgramAddressSync(
+    [pactVaultPDA] = anchor.web3.PublicKey.findProgramAddressSync(
       [Buffer.from("pact_vault"), challengePactPDA.toBuffer()],
       program.programId
     );
 
-    const [playerGoalPDA, ___] = anchor.web3.PublicKey.findProgramAddressSync(
-        [
-            Buffer.from("player_profile"),
-            player.publicKey.toBuffer(),
-            challengePactPDA.toBuffer(),
-        ],
-        program.programId
+    [player1ProfilePDA] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("player_profile"), player1.publicKey.toBuffer()],
+      program.programId
     );
 
+    [player2ProfilePDA] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("player_profile"), player2.publicKey.toBuffer()],
+      program.programId
+    );
+
+    [player1GoalPDA] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("player_pact_profile"),
+        player1.publicKey.toBuffer(),
+        challengePactPDA.toBuffer(),
+      ],
+      program.programId
+    );
+
+    [player2GoalPDA] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("player_pact_profile"),
+        player2.publicKey.toBuffer(),
+        challengePactPDA.toBuffer(),
+      ],
+      program.programId
+    );
+  });
+
+  it("Initializes player profiles", async () => {
+    // Initialize Player 1's Profile
     await program.methods
-      .initializeChallengePact(
-        name,
-        description,
-        goalType,
-        goalValue,
-        verificationType,
-        comparisonOperator,
-        stake
-      )
+      .initializePlayerProfile("Player 1")
       .accounts({
-        challengePact: challengePactPDA,
-        player: player.publicKey,
+        playerProfile: player1ProfilePDA,
+        player: player1.publicKey,
         appVault: app_vault.publicKey,
-        pactVault: pactVaultPDA,
-        playerGoal: playerGoalPDA,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
       .signers([app_vault])
       .rpc();
 
-    // Fetch the created accounts
-    const challengePactAccount = await program.account.challengePact.fetch(
-      challengePactPDA
-    );
-    const pactVaultAccount = await program.provider.connection.getAccountInfo(
-      pactVaultPDA
-    );
+    const player1Profile = await program.account.playerProfile.fetch(player1ProfilePDA);
+    assert.equal(player1Profile.name, "Player 1");
+    assert.isTrue(player1Profile.owner.equals(player1.publicKey));
 
-    // Assertions
-    assert.ok(
-      challengePactAccount.creator.equals(player.publicKey),
-      "Creator is not the player"
-    );
-    assert.equal(
-      challengePactAccount.name,
-      name,
-      "Challenge name does not match"
-    );
-    assert.ok(
-      pactVaultAccount.owner.equals(anchor.web3.SystemProgram.programId),
-      "Vault owner is not the system program"
-    );
-
-    const rent = await program.provider.connection.getMinimumBalanceForRentExemption(0);
-    assert.equal(pactVaultAccount.lamports, rent, "Vault does not have rent-exempt balance");
-  });
-
-  it("Allows a player to stake on a challenge pact", async () => {
-    const name = "Staking Challenge";
-    const description = "A challenge to test staking";
-    const goalType = { dailySteps: {} };
-    const goalValue = new anchor.BN(5000);
-    const verificationType = { screenTime: {} };
-    const comparisonOperator = { greaterThanOrEqual: {} };
-    const stake = new anchor.BN(2 * anchor.web3.LAMPORTS_PER_SOL);
-
-    const [challengePactPDA, _] = anchor.web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("challenge_pact"),
-        Buffer.from(name),
-        player.publicKey.toBuffer(),
-      ],
-      program.programId
-    );
-
-    const [pactVaultPDA, __] = anchor.web3.PublicKey.findProgramAddressSync(
-      [Buffer.from("pact_vault"), challengePactPDA.toBuffer()],
-      program.programId
-    );
-
-    const [playerGoalPDA, ___] = anchor.web3.PublicKey.findProgramAddressSync(
-        [
-            Buffer.from("player_profile"),
-            player.publicKey.toBuffer(),
-            challengePactPDA.toBuffer(),
-        ],
-        program.programId
-    );
-
+    // Initialize Player 2's Profile
     await program.methods
-      .initializeChallengePact(
-        name,
-        description,
-        goalType,
-        goalValue,
-        verificationType,
-        comparisonOperator,
-        stake
-      )
+      .initializePlayerProfile("Player 2")
       .accounts({
-        challengePact: challengePactPDA,
-        player: player.publicKey,
+        playerProfile: player2ProfilePDA,
+        player: player2.publicKey,
         appVault: app_vault.publicKey,
-        pactVault: pactVaultPDA,
-        playerGoal: playerGoalPDA,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
       .signers([app_vault])
       .rpc();
 
-    const initialVaultBalance = await program.provider.connection.getBalance(pactVaultPDA);
+    const player2Profile = await program.account.playerProfile.fetch(player2ProfilePDA);
+    assert.equal(player2Profile.name, "Player 2");
+    assert.isTrue(player2Profile.owner.equals(player2.publicKey));
+  });
 
+  it("Initializes a challenge pact", async () => {
     await program.methods
-        .stakeAmountForChallengePact(stake)
-        .accounts({
-            challengePact: challengePactPDA,
-            player: player.publicKey,
-            pactVault: pactVaultPDA,
-            playerGoal: playerGoalPDA,
-            appVault: app_vault.publicKey,
-            systemProgram: anchor.web3.SystemProgram.programId,
-        })
-        .signers([player])
-        .rpc();
+      .initializeChallengePact(
+        pactName,
+        "A test challenge",
+        { dailySteps: {} },
+        new anchor.BN(10000),
+        { screenTime: {} },
+        { greaterThanOrEqual: {} },
+        stake
+      )
+      .accounts({
+        challengePact: challengePactPDA,
+        player: player1.publicKey,
+        playerProfile: player1ProfilePDA,
+        appVault: app_vault.publicKey,
+        pactVault: pactVaultPDA,
+        playerGoal: player1GoalPDA,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .signers([app_vault])
+      .rpc();
 
-    const playerGoalAccount = await program.account.playerGoalForChallengePact.fetch(playerGoalPDA);
-    assert.isTrue(playerGoalAccount.hasStaked, "Player has not staked");
+    const pact = await program.account.challengePact.fetch(challengePactPDA);
+    assert.equal(pact.name, pactName);
+    assert.isTrue(pact.creator.equals(player1.publicKey));
+    assert.equal(pact.participants.length, 1);
+  });
 
-    const finalVaultBalance = await program.provider.connection.getBalance(pactVaultPDA);
-    assert.equal(finalVaultBalance, initialVaultBalance + stake.toNumber(), "Vault balance did not increase correctly");
+  it("Allows a second player to join the pact", async () => {
+    await program.methods
+      .joinChallengePact()
+      .accounts({
+        challengePact: challengePactPDA,
+        player: player2.publicKey,
+        playerProfile: player2ProfilePDA,
+        appVault: app_vault.publicKey,
+        playerGoal: player2GoalPDA,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .signers([app_vault])
+      .rpc();
+
+    const pact = await program.account.challengePact.fetch(challengePactPDA);
+    assert.equal(pact.participants.length, 2);
+    assert.isTrue(pact.participants[1].equals(player2.publicKey));
+  });
+
+  it("Allows both players to stake", async () => {
+
+    //Log the current balances of the players and the app vault
+    const player1InitialBalance = await provider.connection.getBalance(player1.publicKey);
+    const player2InitialBalance = await provider.connection.getBalance(player2.publicKey);
+    const pactVaultInitialBalance = await provider.connection.getBalance(pactVaultPDA);
+    console.log("Initial Balances:");
+    console.log(`Player 1: ${player1InitialBalance / anchor.web3.LAMPORTS_PER_SOL} SOL`);
+    console.log(`Player 2: ${player2InitialBalance / anchor.web3.LAMPORTS_PER_SOL} SOL`);
+    console.log(`Pact Vault: ${pactVaultInitialBalance / anchor.web3.LAMPORTS_PER_SOL} SOL`);
+
+    // Player 1 stakes
+    await program.methods
+      .stakeAmountForChallengePact(stake)
+      .accounts({
+        challengePact: challengePactPDA,
+        player: player1.publicKey,
+        pactVault: pactVaultPDA,
+        playerGoal: player1GoalPDA,
+        appVault: app_vault.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .signers([player1])
+      .rpc();
+
+    let player1Goal = await program.account.playerGoalForChallengePact.fetch(player1GoalPDA);
+    assert.isTrue(player1Goal.hasStaked);
+
+    // Player 2 stakes
+    await program.methods
+      .stakeAmountForChallengePact(stake)
+      .accounts({
+        challengePact: challengePactPDA,
+        player: player2.publicKey,
+        pactVault: pactVaultPDA,
+        playerGoal: player2GoalPDA,
+        appVault: app_vault.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .signers([player2])
+      .rpc();
+
+    let player2Goal = await program.account.playerGoalForChallengePact.fetch(player2GoalPDA);
+    assert.isTrue(player2Goal.hasStaked);
+
+    const pact = await program.account.challengePact.fetch(challengePactPDA);
+    assert.isTrue(pact.prizePool.eq(stake.muln(2)));
+
+    // check balances after staking of each player
+    const player1FinalBalance = await provider.connection.getBalance(player1.publicKey);
+    const player2FinalBalance = await provider.connection.getBalance(player2.publicKey);
+    const pactVaultFinalBalance = await provider.connection.getBalance(pactVaultPDA);
+    console.log("Final Balances after staking:");
+    console.log(`Player 1: ${player1FinalBalance / anchor.web3.LAMPORTS_PER_SOL} SOL`);
+    console.log(`Player 2: ${player2FinalBalance / anchor.web3.LAMPORTS_PER_SOL} SOL`);
+    console.log(`Pact Vault: ${pactVaultFinalBalance / anchor.web3.LAMPORTS_PER_SOL} SOL`);
+
+  });
+
+  it("Starts the challenge pact", async () => {
+    await program.methods
+      .startChallengePact()
+      .accounts({
+        challengePact: challengePactPDA,
+        player: player1.publicKey,
+        appVault: app_vault.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .remainingAccounts([
+        { pubkey: player1GoalPDA, isSigner: false, isWritable: false },
+        { pubkey: player2GoalPDA, isSigner: false, isWritable: false },
+      ])
+      .signers([app_vault])
+      .rpc();
+
+    const pact = await program.account.challengePact.fetch(challengePactPDA);
+    assert.equal(pact.status.hasOwnProperty("active"), true);
+  });
+
+  it("Ends the challenge and distributes funds to the winner", async () => {
+    // Log player balances before ending the pact
+    const player1InitialBalance = await provider.connection.getBalance(player1.publicKey);
+    const player2InitialBalance = await provider.connection.getBalance(player2.publicKey);
+    const appVaultInitialBalance = await provider.connection.getBalance(app_vault.publicKey);
+    const pactVaultInitialBalance = await provider.connection.getBalance(pactVaultPDA);
+    console.log("Balances before ending the pact:");
+    console.log(`Player 1: ${player1InitialBalance / anchor.web3.LAMPORTS_PER_SOL} SOL`);
+    console.log(`Player 2: ${player2InitialBalance / anchor.web3.LAMPORTS_PER_SOL} SOL`);
+    console.log(`App Vault: ${appVaultInitialBalance / anchor.web3.LAMPORTS_PER_SOL} SOL`);
+    console.log(`Pact Vault: ${pactVaultInitialBalance / anchor.web3.LAMPORTS_PER_SOL} SOL`);
+    // First, update player 2 to be eliminated
+    await program.methods
+      .updatePlayerGoal(true, new anchor.BN(new Date().getTime() / 1000))
+      .accounts({
+          playerGoal: player2GoalPDA,
+          challengePact: challengePactPDA,
+          player: player2.publicKey,
+          appVault: app_vault.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .signers([app_vault])
+      .rpc();
+      
+    const player2Goal = await program.account.playerGoalForChallengePact.fetch(player2GoalPDA);
+    assert.isTrue(player2Goal.isEliminated);
+
+    const winnerInitialBalance = await provider.connection.getBalance(player1.publicKey);
+
+    // End the pact, declaring player1 as the winner
+    await program.methods
+      .endChallengePact()
+      .accounts({
+        challengePact: challengePactPDA,
+        pactVault: pactVaultPDA,
+        winner: player1.publicKey,
+        appVault: app_vault.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .signers([app_vault])
+      .rpc();
+
+    const pact = await program.account.challengePact.fetch(challengePactPDA);
+    assert.equal(pact.status.hasOwnProperty("completed"), true);
+
+    const prizePool = pact.prizePool;
+    const appCut = prizePool.divn(100);
+    const winnerCut = prizePool.sub(appCut);
+
+    const winnerFinalBalance = await provider.connection.getBalance(player1.publicKey);
+    const appVaultFinalBalance = await provider.connection.getBalance(app_vault.publicKey);
+
+    // Log final balances
+    console.log("Final Balances after ending the pact:");
+    console.log(`Winner (Player 1): ${winnerFinalBalance / anchor.web3.LAMPORTS_PER_SOL} SOL`);
+    console.log(`App Vault: ${appVaultFinalBalance / anchor.web3.LAMPORTS_PER_SOL} SOL`);
+
+    // Check winner's balance (it should be initial + winner_cut)
+    assert.equal(winnerFinalBalance, winnerInitialBalance + winnerCut.toNumber());
+    
+    // Check app_vault's balance (it should be initial + app_cut)
+    assert.equal(appVaultFinalBalance, appVaultInitialBalance + appCut.toNumber());
   });
 });

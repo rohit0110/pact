@@ -59,6 +59,11 @@ pub mod pact {
 
         challenge_pact.pact_vault = ctx.accounts.pact_vault.key();
         challenge_pact.pact_vault_bump = ctx.bumps.pact_vault;
+
+        // add PDA of challenge_pact to the player's active pacts
+        let player_profile = &mut ctx.accounts.player_profile;
+        player_profile.active_pacts.push(challenge_pact.key());
+
         Ok(())
     }
 
@@ -73,6 +78,9 @@ pub mod pact {
             ErrorCode::AlreadyJoined
         );
         challenge_pact.participants.push(ctx.accounts.player.key());
+        // add PDA of challenge_pact to the player's active pacts
+        let player_profile = &mut ctx.accounts.player_profile;
+        player_profile.active_pacts.push(challenge_pact.key());
         Ok(())
     }
 
@@ -103,7 +111,103 @@ pub mod pact {
         Ok(())
     }
 
-    
+    // also do the check if all particpants have staked, if so then start the challenge pact in the frontend
+    pub fn start_challenge_pact(ctx: Context<StartChallengePact>) -> Result<()> {
+        let challenge_pact = &mut ctx.accounts.challenge_pact;
+
+        require!(
+            challenge_pact.status == PactStatus::Initialized,
+            ErrorCode::PactNotInitialized
+        );
+        require!(
+            challenge_pact.creator == ctx.accounts.player.key(),
+            ErrorCode::NotPactCreator
+        );
+
+        // Check all participants have staked
+        for participant in challenge_pact.participants.iter() {
+            let (player_goal_pda, _) = Pubkey::find_program_address(
+                &[
+                    b"player_pact_profile",
+                    participant.as_ref(),
+                    challenge_pact.key().as_ref(),
+                ],
+                ctx.program_id,
+            );
+
+            // Get the matching AccountInfo passed in from the frontend
+            let player_goal_info = ctx.remaining_accounts
+                .iter()
+                .find(|acc| acc.key == &player_goal_pda)
+                .ok_or(ErrorCode::MissingPlayerGoal)?;
+
+            let player_goal = PlayerGoalForChallengePact::try_deserialize(&mut &player_goal_info.data.borrow()[..])?;
+
+            require!(player_goal.has_staked, ErrorCode::PlayerNotStaked);
+        }
+
+        challenge_pact.status = PactStatus::Active;
+        Ok(())
+    }
+    pub fn end_challenge_pact(ctx: Context<EndChallengePact>) -> Result<()> {
+        let challenge_pact = &mut ctx.accounts.challenge_pact;
+        require!(
+            challenge_pact.status == PactStatus::Active,
+            ErrorCode::PactAlreadyCompleted
+        );
+        challenge_pact.status = PactStatus::Completed;
+        // For i in challenge_pact.participants check if player_goal.is_eliminated == false, if so transfer the prize_pool to the player
+        // we can use a loop to iterate through the participants and check their goals in PlayerGoalForChallengePact struct with seeds seeds = [b"player_profile", player.key().as_ref(), challenge_pact.key().as_ref()]
+        // do the above in frontend and just pass the pubkey of the winner here
+
+        // Transfer the prize pool to the winner, take a small cut from the prize pool for the app vault
+        let app_cut = challenge_pact.prize_pool / 100; // 1% cut for the app vault
+        let winner_cut = challenge_pact.prize_pool - app_cut;
+
+        //vault seeds
+        let challenge_pact_key = challenge_pact.key();
+        let vault_seeds = &[
+            b"pact_vault".as_ref(),
+            challenge_pact_key.as_ref(),
+            &[challenge_pact.pact_vault_bump],
+        ];
+
+        // Transfer the app cut to the app vault
+        let ix = anchor_lang::solana_program::system_instruction::transfer(
+            &ctx.accounts.pact_vault.key(),
+            &ctx.accounts.app_vault.key(),
+            app_cut,
+        );
+        anchor_lang::solana_program::program::invoke_signed(
+            &ix,
+            &[ctx.accounts.pact_vault.to_account_info(), ctx.accounts.app_vault.to_account_info()],
+            &[vault_seeds]
+        )?;
+
+        // transfer winner cut to the winner
+        let ix = anchor_lang::solana_program::system_instruction::transfer(
+            &ctx.accounts.pact_vault.key(),
+            &ctx.accounts.winner.key(),
+            winner_cut,
+        );
+        anchor_lang::solana_program::program::invoke_signed(
+            &ix,
+            &[ctx.accounts.pact_vault.to_account_info(), ctx.accounts.winner.to_account_info()],
+            &[vault_seeds]
+        )?;
+        // Update the player profile of the winner
+        
+        // Update the player profile of the loser
+        
+        Ok(())
+    }
+
+    pub fn update_player_goal(ctx: Context<UpdatePlayerGoal>, is_eliminated: bool, eliminated_at: Option<i64>) -> Result<()> {
+        let player_goal = &mut ctx.accounts.player_goal;
+        player_goal.is_eliminated = is_eliminated;
+        player_goal.eliminated_at = eliminated_at;
+        Ok(())
+    }
 }
 
 // CONTEXTS----------------------------------------------------
@@ -138,7 +242,7 @@ pub struct InitializeChallengePact<'info> {
     #[account(
         init,
         payer = app_vault,
-        seeds = [b"player_profile", player.key().as_ref(), challenge_pact.key().as_ref()],
+        seeds = [b"player_pact_profile", player.key().as_ref(), challenge_pact.key().as_ref()],
         space = 8 + PlayerGoalForChallengePact::INIT_SPACE,
         bump
     )]
@@ -151,7 +255,13 @@ pub struct InitializeChallengePact<'info> {
     pub pact_vault: SystemAccount<'info>,
     #[account(mut)]
     pub app_vault: Signer<'info>,
-    /// CHECK: Player account is used as a seed for the challenge pact PDA.
+    #[account(
+        mut,
+        seeds = [b"player_profile", player.key().as_ref()],
+        bump
+        )]
+    pub player_profile: Account<'info, PlayerProfile>,
+    /// CHECK: Player account is the creator of the pact and need key to match to creator to initialize it.
     pub player: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
 }
@@ -164,12 +274,18 @@ pub struct JoinChallengePact<'info> {
         init,
         payer = app_vault,
         space = 8 + PlayerGoalForChallengePact::INIT_SPACE,
-        seeds = [b"player_profile", player.key().as_ref(), challenge_pact.key().as_ref()],
+        seeds = [b"player_pact_profile", player.key().as_ref(), challenge_pact.key().as_ref()],
         bump
     )]
     pub player_goal: Account<'info, PlayerGoalForChallengePact>,
     #[account(mut)]
     pub app_vault: Signer<'info>,
+    #[account(
+        mut,
+        seeds = [b"player_profile", player.key().as_ref()],
+        bump,
+    )]
+    pub player_profile: Account<'info, PlayerProfile>,
     /// CHECK: Player account is used as a seed for the player goal PDA.
     pub player: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
@@ -181,7 +297,7 @@ pub struct StakeAmountForChallengePact<'info> {
     pub challenge_pact: Account<'info, ChallengePact>,
     #[account(
         mut,
-        seeds = [b"player_profile", player.key().as_ref(), challenge_pact.key().as_ref()],
+        seeds = [b"player_pact_profile", player.key().as_ref(), challenge_pact.key().as_ref()],
         bump
     )]
     pub player_goal: Account<'info, PlayerGoalForChallengePact>,
@@ -209,6 +325,42 @@ pub struct StartChallengePact<'info> {
     pub system_program: Program<'info, System>,
 }
 
+#[derive(Accounts)]
+pub struct EndChallengePact<'info> {
+    #[account(
+        mut,
+    )]
+    pub challenge_pact: Account<'info, ChallengePact>,
+    #[account(
+        mut,
+        seeds = [b"pact_vault", challenge_pact.key().as_ref()],
+        bump,
+    )]
+    pub pact_vault: SystemAccount<'info>,
+    #[account(mut)]
+    /// CHECK: winner gets lamports; no data is read or written
+    pub winner: AccountInfo<'info>,
+    #[account(mut)]
+    pub app_vault: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct UpdatePlayerGoal<'info> {
+    #[account(
+        mut,
+        seeds = [b"player_pact_profile", player.key().as_ref(), challenge_pact.key().as_ref()],
+        bump
+    )]
+    pub player_goal: Account<'info, PlayerGoalForChallengePact>,
+    #[account(mut)]
+    pub challenge_pact: Account<'info, ChallengePact>,
+    #[account(mut)]
+    pub app_vault: Signer<'info>,
+    /// CHECK: Player account is used as a seed for the player goal PDA.
+    pub player: AccountInfo<'info>,
+    pub system_program: Program<'info, System>,
+}
 // STATE----------------------------------------------------
 #[account]
 #[derive(Default, Debug, PartialEq, InitSpace)]
@@ -350,4 +502,8 @@ pub enum ErrorCode {
     PrizePoolMustBeGreaterThanZero,
     #[msg("Player has already staked in this pact")]
     AlreadyStaked,
+    #[msg("Player has not staked yet.")]
+    PlayerNotStaked,
+    #[msg("Missing PlayerGoal account for a participant.")]
+    MissingPlayerGoal,
 }
