@@ -1,0 +1,568 @@
+Pact App User Stories
+Epic 1: Onboarding & Account Setup
+US-1.1: First Time User Onboarding
+As a new user
+I want to sign up with my email or social login
+So that I can start creating accountability challenges with friends
+
+Acceptance Criteria:
+
+User can sign up with email, Apple, or Google login
+Privy automatically creates a non-custodial wallet
+No crypto knowledge required
+Onboarding takes less than 30 seconds
+US-1.2: Wallet Creation
+As a non-crypto user
+I want to have a wallet created automatically
+So that I can participate without understanding blockchain
+
+Acceptance Criteria:
+
+Wallet creation happens invisibly in background
+User never sees private keys or seed phrases
+Wallet works on Solana/Base network
+Epic 2: Creating a Pact
+US-2.1: Create a Battle
+As a motivated user
+I want to create a fitness challenge for my friend group
+So that we can hold each other accountable with real stakes
+
+Acceptance Criteria:
+
+Can set stakes ($25, $50, $100)
+Can set duration (7-30 days)
+Can name the pact (e.g., "Hot Girl Summer Prep 💅")
+Get shareable invite link after creation
+US-2.2: Set Individual Goals
+As a pact creator
+I want to choose my quantifiable fitness goal
+So that everyone can compete with different objectives
+
+Acceptance Criteria:
+
+Choose from: Daily steps, Screen time limit, Run distance
+Set specific target (e.g., 10,000 steps)
+See difficulty indicator ("Easy Mode 🤱" to "Absolutely Cooked 🔥")
+Epic 3: Joining a Pact
+US-3.1: Join via Invite
+As an invited friend
+I want to join a pact with one click
+So that I can compete with my friends
+
+Acceptance Criteria:
+
+Click invite link to see pact details
+Choose my own goal type and target
+See who else has joined
+Understand the rules before committing money
+US-3.2: Stake Money via Apple Pay
+As a user without crypto
+I want to pay my stake with Apple Pay
+So that I don't need to buy crypto separately
+
+Acceptance Criteria:
+
+One-tap Apple Pay payment
+Automatic conversion to USDC
+See exactly how much I'm staking
+Get confirmation of successful deposit
+US-3.3: Stake Money via Crypto
+As a crypto user
+I want to pay directly with USDC
+So that I can use my existing crypto
+
+Acceptance Criteria:
+
+Display wallet address and QR code
+Support payment from any Solana wallet
+Auto-detect when payment received
+Epic 4: Daily Participation
+US-4.1: Automatic Progress Tracking
+As a participant
+I want my fitness data automatically tracked
+So that I don't need to manually log every day
+
+Acceptance Criteria:
+
+Auto-sync with Apple Health/Google Fit
+No daily manual entry required
+See my progress vs. goal in real-time
+Get credit at midnight UTC automatically
+US-4.2: View Battle Status
+As a participant
+I want to see who's still competing
+So that I know my chances of winning
+
+Acceptance Criteria:
+
+See live leaderboard of "Alive" vs "Eliminated"
+See current pot size
+See days remaining
+Get notifications when someone is eliminated
+US-4.3: Receive Motivational Roasts
+As a participant
+I want to get funny notifications
+So that I stay engaged and entertained
+
+Acceptance Criteria:
+
+Receive contextual notifications ("bestie... 2 hours left to log steps")
+See automated roasts when others fail
+Opt into different roast levels (Mild/Medium/Brutal)
+Epic 5: Strike System & Elimination
+US-5.1: First Strike Warning
+As a participant who missed a day
+I want to get a warning and partial penalty
+So that I have a chance to recover
+
+Acceptance Criteria:
+
+Lose 20% of stake immediately
+Status changes to "At Risk 🚨"
+Get urgent notifications
+See clear warning about elimination risk
+US-5.2: Get Eliminated
+As a participant who missed two days
+I want to see a fun elimination sequence
+So that losing is still entertaining
+
+Acceptance Criteria:
+
+Lose remaining 80% of stake
+See elimination animation
+Get roasted with contextual message
+Can still spectate the remaining battle
+Profile shows elimination in "Hall of Shame"
+US-5.3: Voluntary Surrender
+As a struggling participant
+I want to quit early with reduced penalty
+So that I can cut my losses
+
+Acceptance Criteria:
+
+Can surrender anytime
+Lose only 25% of stake
+Remaining 75% returned to wallet
+Still counted as elimination for stats
+Epic 6: Winning & Payouts
+US-6.1: Win the Pot
+As the last person standing
+I want to automatically receive all the money
+So that I'm rewarded for my consistency
+
+Acceptance Criteria:
+
+Receive entire pot automatically
+See victory animation
+Get shareable victory card
+Update profile with win stats
+US-6.2: Split Among Multiple Winners
+As a survivor when others also survived
+I want to split the pot fairly
+So that we all get rewarded
+
+Acceptance Criteria:
+
+Pot splits evenly among all survivors
+Automatic transfer to wallets
+See breakdown of winnings
+US-6.3: Total Failure Charity Donation
+As a participant when everyone fails
+I want the money to go to charity
+So that some good comes from our collective failure
+
+Acceptance Criteria:
+
+See "Everyone failed" message
+Money goes to Pactify Community Fund
+Get receipt for tax purposes
+Shameful notification to all participants
+Epic 7: Social & Gamification
+US-7.1: View Hall of Shame
+As a user
+I want to see my past failures
+So that I can laugh at myself and improve
+
+Acceptance Criteria:
+
+See list of failed pacts
+See which day I failed
+See how much money I lost
+Expires after completing next pact
+US-7.2: Earn Badges
+As a successful participant
+I want to earn achievement badges
+So that I can show off my consistency
+
+Acceptance Criteria:
+
+Earn "First Blood" for first win
+Earn "Comeback Kid" for winning after elimination
+Earn "Diamond Hands" for 10+ day streaks
+Display badges on profile
+US-7.3: Share Eliminations
+As a participant
+I want to share funny elimination messages
+So that my friends can roast me on social media
+
+Acceptance Criteria:
+
+Auto-generate meme with profile pic
+Pre-written roast messages
+One-tap share to Instagram/TikTok stories
+Include pact name and day failed
+Epic 8: Profile & Stats
+US-8.1: View Career Stats
+As a user
+I want to see my overall performance
+So that I can track my improvement
+
+Acceptance Criteria:
+
+See success rate percentage
+See total money won/lost
+See current and longest streaks
+See badges earned
+US-8.2: Redemption Arc
+As a user who just failed
+I want to immediately join a new pact with higher stakes
+So that I can prove the haters wrong
+
+Acceptance Criteria:
+
+"Prove the Haters Wrong 🔥" button appears after elimination
+Can join new pact with 2x stakes
+Earn special badge if successful
+Track redemption attempts
+Epic 9: Technical Requirements
+US-9.1: Gas-Efficient Operations
+As a user
+I want minimal transaction fees
+So that small stakes remain viable
+
+Acceptance Criteria:
+
+Daily check-ins cost < $0.01
+Use bitmap for progress tracking
+Batch operations where possible
+US-9.2: Instant Notifications
+As a participant
+I want real-time updates
+So that I stay engaged with the competition
+
+Acceptance Criteria:
+
+Push notifications for eliminations
+Daily reminders before deadline
+Celebration notifications for milestones
+Can customize notification preferences
+US-9.3: Dispute Resolution
+As a participant
+I want to dispute incorrect eliminations
+So that technical issues don't unfairly eliminate me
+
+Acceptance Criteria:
+
+Can view historical API data proof
+24-hour dispute window
+Show evidence from health apps
+Clear resolution process
+MVP Priority (Week 1)
+P0 - Must Have:
+
+US-1.1, US-1.2 (Onboarding)
+US-2.1, US-2.2 (Create Pact)
+US-3.1, US-3.2 (Join & Pay)
+US-4.1 (Auto Tracking)
+US-5.2 (Elimination)
+US-6.1 (Winner Payout)
+P1 - Nice to Have:
+
+US-4.3 (Roast Messages)
+US-7.3 (Social Sharing)
+US-8.1 (Basic Stats)
+P2 - Future:
+
+Everything else
+These user stories should give you a comprehensive view of the app's functionality from the user's perspective!
+
+Rohit
+6:28 PM
+remove 5.3
+
+Pact App User Stories
+Epic 1: Onboarding & Account Setup
+US-1.1: First Time User Onboarding
+As a new user
+I want to sign up with my email or social login
+So that I can start creating accountability challenges with friends
+
+Acceptance Criteria:
+
+User can sign up with email, Apple, or Google login
+Privy automatically creates a non-custodial wallet
+No crypto knowledge required
+Onboarding takes less than 30 seconds
+US-1.2: Wallet Creation
+As a non-crypto user
+I want to have a wallet created automatically
+So that I can participate without understanding blockchain
+
+Acceptance Criteria:
+
+Wallet creation happens invisibly in background
+User never sees private keys or seed phrases
+Wallet works on Solana/Base network
+Epic 2: Creating a Pact
+US-2.1: Create a Battle
+As a motivated user
+I want to create a fitness challenge for my friend group
+So that we can hold each other accountable with real stakes
+
+Acceptance Criteria:
+
+Can set stakes ($25, $50, $100)
+Can set duration (7-30 days)
+Can name the pact (e.g., "Hot Girl Summer Prep 💅")
+Get shareable invite link after creation
+US-2.2: Set Individual Goals
+As a pact creator
+I want to choose my quantifiable fitness goal
+So that everyone can compete with different objectives
+
+Acceptance Criteria:
+
+Choose from: Daily steps, Screen time limit, Run distance
+Set specific target (e.g., 10,000 steps)
+See difficulty indicator ("Easy Mode 🤱" to "Absolutely Cooked 🔥")
+Epic 3: Joining a Pact
+US-3.1: Join via Invite
+As an invited friend
+I want to join a pact with one click
+So that I can compete with my friends
+
+Acceptance Criteria:
+
+Click invite link to see pact details
+Choose my own goal type and target
+See who else has joined
+Understand the rules before committing money
+US-3.2: Stake Money via Apple Pay
+As a user without crypto
+I want to pay my stake with Apple Pay
+So that I don't need to buy crypto separately
+
+Acceptance Criteria:
+
+One-tap Apple Pay payment
+Automatic conversion to USDC
+See exactly how much I'm staking
+Get confirmation of successful deposit
+US-3.3: Stake Money via Crypto
+As a crypto user
+I want to pay directly with USDC
+So that I can use my existing crypto
+
+Acceptance Criteria:
+
+Display wallet address and QR code
+Support payment from any Solana wallet
+Auto-detect when payment received
+Epic 4: Daily Participation
+US-4.1: Automatic Progress Tracking
+As a participant
+I want my fitness data automatically tracked
+So that I don't need to manually log every day
+
+Acceptance Criteria:
+
+Auto-sync with Apple Health/Google Fit
+No daily manual entry required
+See my progress vs. goal in real-time
+Get credit at midnight UTC automatically
+US-4.2: View Battle Status
+As a participant
+I want to see who's still competing
+So that I know my chances of winning
+
+Acceptance Criteria:
+
+See live leaderboard of "Alive" vs "Eliminated"
+See current pot size
+See days remaining
+Get notifications when someone is eliminated
+US-4.3: Receive Motivational Roasts
+As a participant
+I want to get funny notifications
+So that I stay engaged and entertained
+
+Acceptance Criteria:
+
+Receive contextual notifications ("bestie... 2 hours left to log steps")
+See automated roasts when others fail
+Opt into different roast levels (Mild/Medium/Brutal)
+Epic 5: Strike System & Elimination
+US-5.1: First Strike Warning
+As a participant who missed a day
+I want to get a warning and partial penalty
+So that I have a chance to recover
+
+Acceptance Criteria:
+
+Lose 20% of stake immediately
+Status changes to "At Risk 🚨"
+Get urgent notifications
+See clear warning about elimination risk
+US-5.2: Get Eliminated
+As a participant who missed two days
+I want to see a fun elimination sequence
+So that losing is still entertaining
+
+Acceptance Criteria:
+
+Lose remaining 80% of stake
+See elimination animation
+Get roasted with contextual message
+Can still spectate the remaining battle
+Profile shows elimination in "Hall of Shame"
+Epic 6: Winning & Payouts
+US-6.1: Win the Pot
+As the last person standing
+I want to automatically receive all the money
+So that I'm rewarded for my consistency
+
+Acceptance Criteria:
+
+Receive entire pot automatically
+See victory animation
+Get shareable victory card
+Update profile with win stats
+US-6.2: Split Among Multiple Winners
+As a survivor when others also survived
+I want to split the pot fairly
+So that we all get rewarded
+
+Acceptance Criteria:
+
+Pot splits evenly among all survivors
+Automatic transfer to wallets
+See breakdown of winnings
+US-6.3: Total Failure Charity Donation
+As a participant when everyone fails
+I want the money to go to charity
+So that some good comes from our collective failure
+
+Acceptance Criteria:
+
+See "Everyone failed" message
+Money goes to Pactify Community Fund
+Get receipt for tax purposes
+Shameful notification to all participants
+Epic 7: Social & Gamification
+US-7.1: View Hall of Shame
+As a user
+I want to see my past failures
+So that I can laugh at myself and improve
+
+Acceptance Criteria:
+
+See list of failed pacts
+See which day I failed
+See how much money I lost
+Expires after completing next pact
+US-7.2: Earn Badges
+As a successful participant
+I want to earn achievement badges
+So that I can show off my consistency
+
+Acceptance Criteria:
+
+Earn "First Blood" for first win
+Earn "Comeback Kid" for winning after elimination
+Earn "Diamond Hands" for 10+ day streaks
+Display badges on profile
+US-7.3: Share Eliminations
+As a participant
+I want to share funny elimination messages
+So that my friends can roast me on social media
+
+Acceptance Criteria:
+
+Auto-generate meme with profile pic
+Pre-written roast messages
+One-tap share to Instagram/TikTok stories
+Include pact name and day failed
+Epic 8: Profile & Stats
+US-8.1: View Career Stats
+As a user
+I want to see my overall performance
+So that I can track my improvement
+
+Acceptance Criteria:
+
+See success rate percentage
+See total money won/lost
+See current and longest streaks
+See badges earned
+US-8.2: Redemption Arc
+As a user who just failed
+I want to immediately join a new pact with higher stakes
+So that I can prove the haters wrong
+
+Acceptance Criteria:
+
+"Prove the Haters Wrong 🔥" button appears after elimination
+Can join new pact with 2x stakes
+Earn special badge if successful
+Track redemption attempts
+Epic 9: Technical Requirements
+US-9.1: Gas-Efficient Operations
+As a user
+I want minimal transaction fees
+So that small stakes remain viable
+
+Acceptance Criteria:
+
+Daily check-ins cost < $0.01
+Use bitmap for progress tracking
+Batch operations where possible
+US-9.2: Instant Notifications
+As a participant
+I want real-time updates
+So that I stay engaged with the competition
+
+Acceptance Criteria:
+
+Push notifications for eliminations
+Daily reminders before deadline
+Celebration notifications for milestones
+Can customize notification preferences
+US-9.3: Dispute Resolution
+As a participant
+I want to dispute incorrect eliminations
+So that technical issues don't unfairly eliminate me
+
+Acceptance Criteria:
+
+Can view historical API data proof
+24-hour dispute window
+Show evidence from health apps
+Clear resolution process
+MVP Priority (Week 1)
+P0 - Must Have:
+
+US-1.1, US-1.2 (Onboarding)
+US-2.1, US-2.2 (Create Pact)
+US-3.1, US-3.2 (Join & Pay)
+US-4.1 (Auto Tracking)
+US-5.2 (Elimination)
+US-6.1 (Winner Payout)
+P1 - Nice to Have:
+
+US-4.3 (Roast Messages)
+US-7.3 (Social Sharing)
+US-8.1 (Basic Stats)
+P2 - Future:
+
+Everything else
+These user stories should give you a comprehensive view of the app's functionality from the user's perspective!

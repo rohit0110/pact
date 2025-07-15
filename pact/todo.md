@@ -12,3 +12,4 @@ PHASE 2 ChallengePact
 [] Pact registry?
 [x] Add pact to active pacts of each participant upon joining pact
 [] Add Destroy Pact state after complete, after which all the accounts will close. Can be called manually or automatically after one day after checking which all pacts have been completed
+[] On EndPact, if no winners, send all the sol to the app (?), but challenge pact is guranteed to have a winner?

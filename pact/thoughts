@@ -24,3 +24,7 @@ GOAL_TYPES
 - EVERY DAY -> X steps Everyday
 - CUMULATIVE -> Complete 30 leetcode problems within Y days
 
+------------------------------------------------------------------------
+player_pact_profile is player goal profile, sep for each pact
+player_profile is the main profile for stats and shit
+
