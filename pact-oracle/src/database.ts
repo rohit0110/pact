@@ -33,10 +33,12 @@ export async function openDb(): Promise<Database> {
       created_at INTEGER
     );
 
-    CREATE TABLE IF NOT EXISTS players (
+    CREATE TABLE IF NOT EXISTS player_profiles (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       pubkey TEXT UNIQUE NOT NULL,
-      name TEXT
+      name TEXT,
+      pacts_won INTEGER DEFAULT 0,
+      pacts_lost INTEGER DEFAULT 0
     );
 
     CREATE TABLE IF NOT EXISTS participants (
@@ -46,7 +48,7 @@ export async function openDb(): Promise<Database> {
         is_eliminated BOOLEAN DEFAULT FALSE,
         PRIMARY KEY (pact_pubkey, player_pubkey),
         FOREIGN KEY (pact_pubkey) REFERENCES pacts(pubkey),
-        FOREIGN KEY (player_pubkey) REFERENCES players(pubkey)
+        FOREIGN KEY (player_pubkey) REFERENCES player_profiles(pubkey)
     );
   `);
 

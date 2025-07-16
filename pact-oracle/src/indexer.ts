@@ -1,28 +1,27 @@
 import { Connection } from '@solana/web3.js';
 import { openDb } from './database';
-// import { Program } from '@coral-xyz/anchor'; // Assuming anchor is set up
+import { Program } from '@coral-xyz/anchor';
+import { Pact } from './idl/idl';
 
 /**
  * Fetches all pact-related accounts from the blockchain and updates the local database.
  * @param connection The Solana connection object.
  * @param program The Anchor program instance for your smart contract.
  */
-export async function runIndexer(connection: Connection, program: any /* anchor.Program<Pact> */) {
-  console.log('Starting indexer run...');
+
+export async function runIndexer(connection: Connection, program: Program<Pact>) {
+  console.log('🔁 Starting indexer run...');
   const db = await openDb();
 
-  // TODO: Fetch all 'ChallengePact' accounts from the blockchain
-  const allPacts = await program.account.challengePact.all();
-  // const allPacts: any[] = []; // Placeholder
-
-  // Use a transaction to ensure atomicity
+  // Use a single transaction for the entire indexing run for atomicity
   await db.run('BEGIN TRANSACTION');
   try {
+    // === 1. Index ChallengePacts ===
+    // This step now ONLY handles the pacts table.
+    console.log('Indexing pacts...');
+    const allPacts = await program.account.challengePact.all();
     for (const pact of allPacts) {
-      // TODO: Map the on-chain pact data to the database schema
-      const { pubkey, name, description, creator, status, stake, prizePool, createdAt, participants } = pact.account;
-
-      // Upsert the pact data (insert or replace)
+      const { name, description, creator, status, stake, prizePool, createdAt } = pact.account;
       await db.run(
         `INSERT OR REPLACE INTO pacts (pubkey, name, description, creator, status, stake_amount, prize_pool, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, 
@@ -35,23 +34,45 @@ export async function runIndexer(connection: Connection, program: any /* anchor.
          prizePool.toNumber(), 
          createdAt.toNumber()
       );
-      console.log(Object.keys(status)[0]);
-      for (const participantKey of participants) {
-        // Upsert participant data
-        await db.run(
-          `INSERT OR IGNORE INTO players (pubkey) VALUES (?)`,
-          participantKey.toBase58()
-        );
-        await db.run(
-          `INSERT OR IGNORE INTO participants (pact_pubkey, player_pubkey) VALUES (?, ?)`,
-          pact.publicKey.toBase58(), participantKey.toBase58()
-        );
-      }
     }
+
+    // === 2. Index PlayerProfiles ===
+    // This step populates/updates the player_profiles table.
+    console.log('Indexing player profiles...');
+    const allProfiles = await program.account.playerProfile.all();
+    for (const profile of allProfiles) {
+        const { owner, name, pactsWon, pactsLost } = profile.account;
+        // Use INSERT OR IGNORE for new players, then UPDATE to ensure data is fresh.
+        await db.run(`INSERT OR IGNORE INTO player_profiles (pubkey) VALUES (?)`, owner.toBase58());
+        await db.run(
+            `UPDATE player_profiles SET name = ?, pacts_won = ?, pacts_lost = ? WHERE pubkey = ?`,
+            name, pactsWon.toNumber(), pactsLost.toNumber(), owner.toBase58()
+        );
+    }
+
+    // === 3. Index PlayerGoals (Authoritative step for participants) ===
+    // This step now creates and updates the participants table, as it has the most complete data.
+    console.log('Indexing player goals and participants...');
+    const allPlayerGoals = await program.account.playerGoalForChallengePact.all();
+    for (const playerGoal of allPlayerGoals) {
+        const { player, pact, hasStaked, isEliminated } = playerGoal.account;
+        console.log(playerGoal);
+        // Using INSERT OR REPLACE is more robust than separate INSERT/UPDATE.
+        
+        await db.run(
+            `INSERT OR REPLACE INTO participants (pact_pubkey, player_pubkey, has_staked, is_eliminated)
+             VALUES (?, ?, ?, ?)`, 
+            pact.toBase58(), 
+            player.toBase58(),
+            hasStaked ? 1 : 0, 
+            isEliminated ? 1 : 0
+        );
+    }
+
     await db.run('COMMIT');
-    console.log('Indexer run completed successfully.');
+    console.log('✅ Indexer run completed successfully.');
   } catch (error) {
     await db.run('ROLLBACK');
-    console.error('Error during indexer run, transaction rolled back:', error);
+    console.error('❌ Error during indexer run, transaction rolled back:', error);
   }
 }
