@@ -31,7 +31,12 @@ pub mod pact {
         challenge_pact.prize_pool = 0;
         challenge_pact.participants = Vec::new();
         challenge_pact.participants.push(ctx.accounts.player.key());
-
+        let player_goal = &mut ctx.accounts.player_goal;
+        player_goal.player = ctx.accounts.player.key();
+        player_goal.pact = challenge_pact.key();
+        player_goal.has_staked = false;
+        player_goal.is_eliminated = false;
+        player_goal.eliminated_at = None;
         // Calculate the rent-exempt minimum for the vault
         let rent_exemption = Rent::get()?.minimum_balance(0);
 
