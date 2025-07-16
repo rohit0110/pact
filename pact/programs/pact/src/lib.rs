@@ -69,6 +69,12 @@ pub mod pact {
 
     pub fn join_challenge_pact(ctx: Context<JoinChallengePact>) -> Result<()> {
         let challenge_pact = &mut ctx.accounts.challenge_pact;
+        let player_goal = &mut ctx.accounts.player_goal;
+        player_goal.player = ctx.accounts.player.key();
+        player_goal.pact = challenge_pact.key();
+        player_goal.has_staked = false;
+        player_goal.is_eliminated = false;
+        player_goal.eliminated_at = None;
         require!(
             challenge_pact.status == PactStatus::Initialized,
             ErrorCode::PactNotInitialized
