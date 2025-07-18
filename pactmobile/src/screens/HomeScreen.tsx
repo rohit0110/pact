@@ -2,15 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, SafeAreaView, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 // import { getPacts } from '../services/api'; // Import the API service
+import { Pact } from '../types'; // Import the Pact type
 
 // Dummy data for pacts, used for initial state
-const DUMMY_PACTS = [
+const DUMMY_PACTS: Pact[] = [
   {
     pubkey: '1',
     name: 'Morning Run Club',
     description: 'Run 5km every day before 8 AM.',
     status: 'Active',
     prize_pool: 150,
+    stake_amount: 10,
+    created_at: 0,
   },
   {
     pubkey: '2',
@@ -18,6 +21,8 @@ const DUMMY_PACTS = [
     description: 'Solve one LeetCode problem daily.',
     status: 'Active',
     prize_pool: 250,
+    stake_amount: 10,
+    created_at: 0,
   },
   {
     pubkey: '3',
@@ -25,10 +30,12 @@ const DUMMY_PACTS = [
     description: 'Less than 2 hours of screen time per day.',
     status: 'Initialized',
     prize_pool: 100,
+    stake_amount: 10,
+    created_at: 0,
   },
 ];
 
-const PactCard = ({ pact, onPress }) => (
+const PactCard = ({ pact, onPress }: { pact: Pact, onPress: () => void }) => (
   <TouchableOpacity style={styles.card} onPress={onPress}>
     <View style={styles.cardHeader}>
       <Text style={styles.pactName}>{pact.name}</Text>
@@ -55,7 +62,7 @@ const HomeScreen = () => {
     fetchPacts();
   }, []);
 
-  const renderItem = ({ item }) => (
+  const renderItem = ({ item }: { item: Pact }) => (
     <PactCard 
       pact={item} 
       onPress={() => navigation.navigate('PactDashboard', { pactId: item.pubkey })} 
@@ -134,6 +141,9 @@ const styles = StyleSheet.create({
   },
   statusCompleted: {
     backgroundColor: '#34c759', // Green
+  },
+  statusCancelled: {
+    backgroundColor: '#ff3b30', // Red
   },
   description: {
     color: '#8e8e93',

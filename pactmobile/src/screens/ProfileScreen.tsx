@@ -14,8 +14,13 @@ const DUMMY_ACTIVE_PACTS = [
   { id: '2', name: 'Daily Coding Challenge' },
 ];
 
+type Pact = {
+  id: string;
+  name: string;
+};
+
 const ProfileScreen = () => {
-  const renderPactItem = ({ item }) => (
+  const renderPactItem = ({ item }: { item: Pact }) => (
     <View style={styles.pactItem}>
       <Text style={styles.pactItemText}>{item.name}</Text>
     </View>
