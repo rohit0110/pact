@@ -1,0 +1,2 @@
+[] player_goal pubkeys for pact and player in account coming as 1111111111111111, which should not be possible
+[] pacts_won and pacts_lost not getting updated
