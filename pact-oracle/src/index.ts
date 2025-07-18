@@ -105,6 +105,7 @@ app.get('/', (req, res) => {
 
 /**
  * API endpoint to get all indexed pacts.
+ * Most probably will not be used in production, but useful for debugging.
  */
 app.get('/api/pacts', async (req, res) => {
     try {
@@ -115,6 +116,45 @@ app.get('/api/pacts', async (req, res) => {
         console.error('Error in /api/pacts:', error);
         res.status(500).json({ error: 'Internal server error.' });
     }
+});
+
+/**
+ * API endpoint to get all pacts a specific player is a part of.
+ */
+app.get('/api/players/:pubkey/pacts', async (req, res) => {
+    try {
+        const { pubkey } = req.params;
+        const db = await openDb();
+        const pacts = await db.all(
+            'SELECT T2.* FROM participants AS T1 JOIN pacts AS T2 ON T1.pact_pubkey = T2.pubkey WHERE T1.player_pubkey = ?',
+            pubkey
+        );
+        res.status(200).json(pacts);
+    } catch (error) {
+        console.error(`Error in /api/players/${req.params.pubkey}/pacts:`, error);
+        res.status(500).json({ error: 'Internal server error.' });
+    }
+});
+
+
+/**
+ * API endpoint to get details of a specific pact.
+ * Most probably not needed since when we list pacts, we get all the details.
+ */
+app.get('/api/pacts/:pubkey', async (req, res) => {
+  try {
+    const pubkey = req.params.pubkey;
+    if (!pubkey) {
+      return res.status(400).json({ error: 'Public key not provided.' });
+    }
+
+    const db = await openDb();
+    const pacts = await db.all('SELECT * FROM pacts WHERE pubkey = ?', [pubkey]);
+    res.status(200).json(pacts);
+  } catch (error) {
+    console.error('Error in /api/pacts/:pubkey:', error);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
 });
 
 /**
