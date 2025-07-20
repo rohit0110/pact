@@ -2,6 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, TouchableOpacity, StyleSheet, Text } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import Icon from 'react-native-vector-icons/Ionicons';
 
 // Import your screens
 import HomeScreen from '../screens/HomeScreen';
@@ -9,6 +10,14 @@ import ProfileScreen from '../screens/ProfileScreen';
 import CreatePactScreen from '../screens/CreatePactScreen';
 
 const Tab = createBottomTabNavigator();
+
+const HomeTabBarIcon = ({ color, size }: { color: string; size: number }) => (
+  <Icon name="home-outline" size={size} color={color} />
+);
+
+const ProfileTabBarIcon = ({ color, size }: { color: string; size: number }) => (
+  <Icon name="person-outline" size={size} color={color} />
+);
 
 const AppNavigator = () => {
   const navigation = useNavigation();
@@ -27,10 +36,16 @@ const AppNavigator = () => {
         <Tab.Screen 
           name="Pacts" 
           component={HomeScreen} 
+          options={{
+            tabBarIcon: HomeTabBarIcon,
+          }}
         />
         <Tab.Screen 
           name="Profile" 
           component={ProfileScreen} 
+          options={{
+            tabBarIcon: ProfileTabBarIcon,
+          }}
         />
       </Tab.Navigator>
       <TouchableOpacity
