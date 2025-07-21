@@ -1,15 +1,28 @@
 import React, { useState } from 'react';
-import { View, Text, Button, TextInput, StyleSheet, ActivityIndicator } from 'react-native';
-import { usePrivy, useLoginWithEmail } from '@privy-io/expo';
+import {
+  View,
+  Text,
+  Button,
+  TextInput,
+  StyleSheet,
+  ActivityIndicator,
+} from 'react-native';
+import {
+  usePrivy,
+  useLoginWithEmail,
+  useLoginWithOAuth,
+} from '@privy-io/expo';
 
 export default function HomeScreen() {
   const { isReady, user, logout } = usePrivy();
   const { sendCode, loginWithCode } = useLoginWithEmail();
+  const { login: loginWithGoogle } = useLoginWithOAuth();
 
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [codeSent, setCodeSent] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   if (!isReady) {
     return (
@@ -23,8 +36,28 @@ export default function HomeScreen() {
   if (!user) {
     return (
       <View style={styles.centered}>
-        <Text style={styles.text}>Login with Email</Text>
+        <Text style={styles.text}>Login</Text>
 
+        {/* Google Login Button */}
+        <Button
+          title="Login with Google"
+          disabled={googleLoading}
+          onPress={async () => {
+            try {
+              setGoogleLoading(true);
+              const loggedInUser = await loginWithGoogle({ provider: 'google' });
+              console.log('Google login success', loggedInUser?.id);
+            } catch (err) {
+              console.error('Google login failed', err);
+            } finally {
+              setGoogleLoading(false);
+            }
+          }}
+        />
+
+        <Text style={{ marginVertical: 16 }}>OR</Text>
+
+        {/* Email Input */}
         <TextInput
           value={email}
           onChangeText={setEmail}
@@ -34,6 +67,7 @@ export default function HomeScreen() {
           keyboardType="email-address"
         />
 
+        {/* OTP Input */}
         {codeSent && (
           <TextInput
             value={code}
@@ -44,45 +78,52 @@ export default function HomeScreen() {
           />
         )}
 
+        {/* OTP Buttons */}
         {!codeSent ? (
           <Button
             title="Send Code"
+            disabled={otpLoading}
             onPress={async () => {
-              setLoading(true);
+              setOtpLoading(true);
               try {
                 await sendCode({ email });
                 setCodeSent(true);
               } catch (err) {
                 console.error('Send code error:', err);
               } finally {
-                setLoading(false);
+                setOtpLoading(false);
               }
             }}
           />
         ) : (
           <Button
-            title="Login"
+            title="Login with Code"
+            disabled={otpLoading}
             onPress={async () => {
-              setLoading(true);
+              setOtpLoading(true);
               try {
                 await loginWithCode({ email, code });
               } catch (err) {
                 console.error('Login error:', err);
               } finally {
-                setLoading(false);
+                setOtpLoading(false);
               }
             }}
           />
         )}
 
-        {loading && <ActivityIndicator size="small" style={{ marginTop: 10 }} />}
+        {(otpLoading || googleLoading) && (
+          <ActivityIndicator size="small" style={{ marginTop: 10 }} />
+        )}
       </View>
     );
   }
 
   return (
     <View style={styles.centered}>
-      <Text style={styles.text}>Welcome, {user?.email || user?.wallet?.address} 👋</Text>
+      <Text style={styles.text}>
+        Welcome 👋
+      </Text>
       <Button title="Logout" onPress={logout} />
     </View>
   );
