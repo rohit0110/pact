@@ -1,6 +1,6 @@
 
-import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity } from 'react-native';
 
 // Dummy Pact Data (replace with actual data fetching later)
 const DUMMY_PACT = {
@@ -12,15 +12,21 @@ const DUMMY_PACT = {
   stake_amount: 20, // USD or SOL
   duration_days: 30,
   participants: [
-    { id: 'user1', name: 'Alice' },
-    { id: 'user2', name: 'Bob' },
-    { id: 'user3', name: 'Charlie' },
+    { id: 'user1', name: 'Alice', isEliminated: false },
+    { id: 'user2', name: 'Bob', isEliminated: true },
+    { id: 'user3', name: 'Charlie', isEliminated: false },
+    { id: 'user4', name: 'David', isEliminated: true },
+    { id: 'user5', name: 'Dave', isEliminated: false },
   ],
   created_at: Date.now(),
 };
 
 const PactDashboardScreen = () => {
   const pact = DUMMY_PACT; // In a real app, this would come from navigation params or a state management solution
+  const [activeTab, setActiveTab] = useState<'inRunning' | 'eliminated'>('inRunning');
+
+  const inRunningParticipants = pact.participants.filter(p => !p.isEliminated);
+  const eliminatedParticipants = pact.participants.filter(p => p.isEliminated);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -49,10 +55,42 @@ const PactDashboardScreen = () => {
         </View>
 
         <View style={styles.participantsCard}>
-          <Text style={styles.sectionTitle}>Participants</Text>
-          {pact.participants.map((participant) => (
-            <Text key={participant.id} style={styles.participantName}>- {participant.name}</Text>
-          ))}
+          <View style={styles.tabContainer}>
+            <TouchableOpacity
+              style={[styles.tabButton, activeTab === 'inRunning' && styles.activeTab]}
+              onPress={() => setActiveTab('inRunning')}
+            >
+              <Text style={[styles.tabButtonText, activeTab === 'inRunning' && styles.activeTabText]}>In Running ({inRunningParticipants.length})</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tabButton, activeTab === 'eliminated' && styles.activeTab]}
+              onPress={() => setActiveTab('eliminated')}
+            >
+              <Text style={[styles.tabButtonText, activeTab === 'eliminated' && styles.activeTabText]}>Eliminated ({eliminatedParticipants.length})</Text>
+            </TouchableOpacity>
+          </View>
+
+          {activeTab === 'inRunning' ? (
+            <View>
+              {inRunningParticipants.length > 0 ? (
+                inRunningParticipants.map((participant) => (
+                  <Text key={participant.id} style={styles.participantName}>- {participant.name}</Text>
+                ))
+              ) : (
+                <Text style={styles.noParticipantsText}>No participants currently in running.</Text>
+              )}
+            </View>
+          ) : (
+            <View>
+              {eliminatedParticipants.length > 0 ? (
+                eliminatedParticipants.map((participant) => (
+                  <Text key={participant.id} style={[styles.participantName, styles.eliminatedParticipantName]}>- {participant.name}</Text>
+                ))
+              ) : (
+                <Text style={styles.noParticipantsText}>No eliminated participants.</Text>
+              )}
+            </View>
+          )}
         </View>
 
         {/* Add more details or actions here */}
@@ -129,6 +167,38 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#fff',
     marginBottom: 5,
+  },
+  eliminatedParticipantName: {
+    color: '#8e8e93',
+    textDecorationLine: 'line-through',
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    marginBottom: 15,
+    backgroundColor: '#000',
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    backgroundColor: '#333',
+  },
+  activeTab: {
+    backgroundColor: '#007aff',
+  },
+  tabButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  activeTabText: {
+    color: '#fff',
+  },
+  noParticipantsText: {
+    color: '#8e8e93',
+    textAlign: 'center',
+    marginTop: 10,
   },
 });
 
