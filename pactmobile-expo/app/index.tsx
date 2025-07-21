@@ -1,24 +1,81 @@
-import { View, Text, Button, StyleSheet, ActivityIndicator } from 'react-native';
-import { usePrivy } from '@privy-io/expo';
-import React from 'react';
+import React, { useState } from 'react';
+import { View, Text, Button, TextInput, StyleSheet, ActivityIndicator } from 'react-native';
+import { usePrivy, useLoginWithEmail } from '@privy-io/expo';
 
 export default function HomeScreen() {
-  const { ready, authenticated, user, login, logout } = usePrivy();
+  const { isReady, user, logout } = usePrivy();
+  const { sendCode, loginWithCode } = useLoginWithEmail();
 
-  if (!ready) {
+  const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
+  const [codeSent, setCodeSent] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  if (!isReady) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" />
-        <Text style={styles.text}>Loading Privy...</Text>
+        <Text style={styles.text}>Initializing Privy...</Text>
       </View>
     );
   }
 
-  if (!authenticated) {
+  if (!user) {
     return (
       <View style={styles.centered}>
-        <Text style={styles.text}>You are not logged in.</Text>
-        <Button title="Login with Privy" onPress={login} />
+        <Text style={styles.text}>Login with Email</Text>
+
+        <TextInput
+          value={email}
+          onChangeText={setEmail}
+          placeholder="Enter your email"
+          style={styles.input}
+          autoCapitalize="none"
+          keyboardType="email-address"
+        />
+
+        {codeSent && (
+          <TextInput
+            value={code}
+            onChangeText={setCode}
+            placeholder="Enter code"
+            style={styles.input}
+            keyboardType="number-pad"
+          />
+        )}
+
+        {!codeSent ? (
+          <Button
+            title="Send Code"
+            onPress={async () => {
+              setLoading(true);
+              try {
+                await sendCode({ email });
+                setCodeSent(true);
+              } catch (err) {
+                console.error('Send code error:', err);
+              } finally {
+                setLoading(false);
+              }
+            }}
+          />
+        ) : (
+          <Button
+            title="Login"
+            onPress={async () => {
+              setLoading(true);
+              try {
+                await loginWithCode({ email, code });
+              } catch (err) {
+                console.error('Login error:', err);
+              } finally {
+                setLoading(false);
+              }
+            }}
+          />
+        )}
+
+        {loading && <ActivityIndicator size="small" style={{ marginTop: 10 }} />}
       </View>
     );
   }
@@ -37,6 +94,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
+  },
+  input: {
+    width: '100%',
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    marginVertical: 10,
+    borderRadius: 6,
   },
   text: {
     fontSize: 18,

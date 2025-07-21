@@ -1,11 +1,8 @@
-// entrypoint.js
-
-// 🧩 Required polyfills for Privy
+// Import required polyfills first
 import 'fast-text-encoding';
 import 'react-native-get-random-values';
-import '@ethersproject/shims';
-import { Buffer } from 'buffer';
+import {Buffer} from 'buffer';
 global.Buffer = Buffer;
-
-// 🚀 Start the app via Expo Router
+import '@ethersproject/shims';
+// Then import the expo router
 import 'expo-router/entry';
