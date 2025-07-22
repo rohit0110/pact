@@ -192,7 +192,7 @@ app.post('/api/relay-transaction', async (req, res) => {
 
     // For now, returning a placeholder signature
     const signature = '2xJ...placeholder...4vT';
-
+    console.log('Transaction relayed successfully with signature:', signature);
     res.status(200).json({ signature });
 
   } catch (error) {

@@ -7,6 +7,8 @@ import { ThemedView } from '@/components/ThemedView';
 import { Colors } from '@/constants/Colors';
 import { useRouter } from 'expo-router';
 import { IconSymbol } from '@/components/ui/IconSymbol';
+import { useEmbeddedSolanaWallet } from '@privy-io/expo';
+import { PublicKey } from '@solana/web3.js';
 import { fetchPacts, fetchAllPacts } from '../../services/api/pactService';
 
 export default function PactPage() {
@@ -26,13 +28,18 @@ export default function PactPage() {
   const [pacts, setPacts] = useState<PactType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-
-  // Placeholder pubkey for now
-  const pubkey = 'YOUR_PLACEHOLDER_PUBKEY'; 
+  const embeddedSolanaWallet = useEmbeddedSolanaWallet();
+  const wallet = embeddedSolanaWallet?.wallets?.[0] || null;
+  const walletPublicKey = wallet?.publicKey || null;
 
   useEffect(() => {
     const loadPacts = async () => {
       try {
+        if (!walletPublicKey) {
+          setError(new Error('Wallet not connected.'));
+          return;
+        }
+        const pubkey = new PublicKey(walletPublicKey);
         const data = await fetchAllPacts();
         type PactApiType = {
           id: string;
@@ -40,6 +47,7 @@ export default function PactPage() {
           description?: string;
           status: string;
           prize_pool: number;
+          stake: number;
           [key: string]: any;
         };
 
@@ -50,6 +58,7 @@ export default function PactPage() {
           title: pact.name,
           description: pact.description || 'No description available',
           id: pact.id,
+          stake: pact.stake_amount,
           participants: pact.participants || [], // Ensure participants is always an array
         }));
         setPacts(formatted);
@@ -62,7 +71,15 @@ export default function PactPage() {
     };
 
     loadPacts();
-  }, [pubkey]);
+  }, [walletPublicKey]);
+
+  if (!embeddedSolanaWallet || !embeddedSolanaWallet.wallets || embeddedSolanaWallet.wallets.length === 0) {
+    return (
+      <ThemedView style={[styles.container, { paddingTop: insets.top, justifyContent: 'center', alignItems: 'center' }]}>
+        <ThemedText>Please connect your wallet to view pacts.</ThemedText>
+      </ThemedView>
+    );
+  }
 
   const renderItem = ({ item }: { item: { id: string; title: string; description: string; status: string; prizePool: number } }) => (
     <TouchableOpacity onPress={() => router.push({ pathname: '/pact-dashboard', params: { pact: JSON.stringify(item) } })}>

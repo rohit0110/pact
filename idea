@@ -6,9 +6,9 @@
 
 ### **I. The End-to-End User Flow (The Core Loop)**
 
-1. **Onboarding & Wallet Creation:** A new user signs up for Pactify using their email or social account. In the background, **Privy** creates a secure, non-custodial cryptocurrency wallet for them on the **Base** network, requiring no complex setup from the user.
-2. **Creation:** A user (the "Creator") defines a new challenge or "Pact," including the rules and stakes. They also choose the final payout rule: "Split Among Winners" or "Donate to Charity."
-3. **Invitation:** The Creator invites friends from their contact list or social circle with a unique link.
+1. **Onboarding & Wallet Creation:** A new user signs up for Pactify using their email or social account. In the background, **Privy** creates a secure, non-custodial cryptocurrency wallet for them on the **Base** network, requiring no complex setup from the user. [DONE]
+2. **Creation:** A user (the "Creator") defines a new challenge or "Pact," including the rules and stakes. They also choose the final payout rule: "Split Among Winners" or "Donate to Charity." [IP]
+3. **Invitation:** The Creator invites friends from their contact list or social circle with a unique link. [TODO]
 4. **Commitment (The On-Ramp):** Invited friends receive the Pact details. To join, they deposit the agreed-upon stake (as USDC) into the Pact's secure smart contract. They have two easy ways to do this:
     - **Apple Pay:** Use a standard Apple Pay transaction to have their fiat money automatically converted to USDC and deposited (**on-ramped**).
     - **Crypto:** Pay directly with existing USDC from their Pactify (Privy) wallet or any other compatible crypto wallet.

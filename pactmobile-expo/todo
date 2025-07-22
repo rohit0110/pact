@@ -1,0 +1,3 @@
+Create a share link to pact
+Whenever a user opens a pact, check if their pubkey is in the vector of pubkeys, if not offer a join pact button
+Create a pact should call the post api along with a tx that got created
