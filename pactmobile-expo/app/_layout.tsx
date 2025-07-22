@@ -1,3 +1,6 @@
+import { Stack } from 'expo-router';
+import { Colors } from '@/constants/Colors';
+
 // app/_layout.tsx
 import 'fast-text-encoding';
 import 'react-native-get-random-values';
@@ -24,7 +27,11 @@ export default function RootLayout() {
     }}>
       <SafeAreaProvider>
         <StatusBar style="auto" />
-        <Slot />
+        <Stack>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="pact-dashboard" options={{ title: 'Pact Dashboard', headerStyle: { backgroundColor: Colors.dark.background }, headerTintColor: Colors.dark.tint }} />
+          <Stack.Screen name="create-pact" options={{ title: 'Create Pact', headerStyle: { backgroundColor: Colors.dark.background }, headerTintColor: Colors.dark.tint }} />
+        </Stack>
       </SafeAreaProvider>
     </PrivyProvider>
   );
