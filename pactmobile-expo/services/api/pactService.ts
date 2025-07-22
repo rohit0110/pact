@@ -3,6 +3,26 @@ import { Connection, Keypair, SystemProgram, TransactionMessage, VersionedTransa
 
 const BASE_URL = 'http://10.0.2.2:3000';
 
+export const fetchPlayerProfile = async (pubkey: string) => {
+  try {
+    console.log(`Fetching profile for public key: ${pubkey}`);
+
+    // DUMMY KEY TILL VALUE ADDED
+    pubkey = 'GvEq7ARZN3NkPhBJMvKzYxeutg3ax48PquFrHCq6eu7F';
+
+    const response = await fetch(`${BASE_URL}/api/players/${pubkey}`);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    console.log('Profile data fetched:', data);
+    return data;  
+  } catch (e) {
+    console.error("Failed to fetch player profile:", e);
+    throw e;
+  }
+};
+
 export const fetchPacts = async (pubkey: string) => {
   try {
     const response = await fetch(`${BASE_URL}/api/players/${pubkey}/pacts`);

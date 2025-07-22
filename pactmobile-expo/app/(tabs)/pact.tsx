@@ -35,11 +35,8 @@ export default function PactPage() {
   useEffect(() => {
     const loadPacts = async () => {
       try {
-        if (!walletPublicKey) {
-          setError(new Error('Wallet not connected.'));
-          return;
-        }
-        const pubkey = new PublicKey(walletPublicKey);
+        console.log(walletPublicKey)
+        const pubkey = new PublicKey(walletPublicKey!);
         const data = await fetchAllPacts();
         type PactApiType = {
           id: string;

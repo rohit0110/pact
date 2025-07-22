@@ -157,8 +157,25 @@ app.get('/api/pacts/:pubkey', async (req, res) => {
   }
 });
 
-app.get('/api/test', async (req, res) => {
-  return res.status(200).json({ message: 'This endpoint is not implemented yet.' });
+/**
+ * API endpoint to get a player's profile.
+ */
+app.get('/api/players/:pubkey', async (req, res) => {
+  try {
+    const pubkey = req.params.pubkey;
+    if (!pubkey) {
+      return res.status(400).json({ error: 'Public key not provided.' });
+    }
+    const db = await openDb();
+    const playerProfile = await db.get('SELECT * FROM player_profiles WHERE pubkey = ?', [pubkey]);
+    if (!playerProfile) {
+      return res.status(404).json({ error: 'Player profile not found.' });
+    }
+    res.status(200).json(playerProfile);
+  } catch (error) {
+    console.error('Error in /api/players/:pubkey:', error);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
 });
 
 /**
