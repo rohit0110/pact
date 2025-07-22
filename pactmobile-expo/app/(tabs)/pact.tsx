@@ -1,25 +1,71 @@
 
-import React from 'react';
-import { StyleSheet, View, FlatList, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { Colors } from '@/constants/Colors';
 import { useRouter } from 'expo-router';
 import { IconSymbol } from '@/components/ui/IconSymbol';
-
-const pacts = [
-  { id: '1', title: 'Pact to learn React Native', description: 'Complete the main quest of building a mobile app.', status: 'Active', prizePool: 100 },
-  { id: '2', title: 'Pact to go to the gym', description: 'Go to the gym 3 times a week for a month.', status: 'Initialize', prizePool: 50 },
-  { id: '3', title: 'Pact to read a book', description: 'Finish reading "The Hitchhiker\'s Guide to the Galaxy".', status: 'Active', prizePool: 25 },
-];
+import { fetchPacts, fetchAllPacts } from '../../services/api/pactService';
 
 export default function PactPage() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  type PactType = {
+    id: string;
+    name: string;
+    description: string;
+    status: string;
+    prizePool: number;
+    title: string;
+    prize_pool: number;
+    participants?: { name: string; status: string }[];
+  };
+
+  const [pacts, setPacts] = useState<PactType[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  // Placeholder pubkey for now
+  const pubkey = 'YOUR_PLACEHOLDER_PUBKEY'; 
+
+  useEffect(() => {
+    const loadPacts = async () => {
+      try {
+        const data = await fetchAllPacts();
+        type PactApiType = {
+          id: string;
+          name: string;
+          description?: string;
+          status: string;
+          prize_pool: number;
+          [key: string]: any;
+        };
+
+        const formatted = (data as PactApiType[]).map((pact: PactApiType) => ({
+          ...pact,
+          prizePool: pact.prize_pool,
+          status: pact.status.charAt(0).toUpperCase() + pact.status.slice(1), // Capitalize status
+          title: pact.name,
+          description: pact.description || 'No description available',
+          id: pact.id,
+          participants: pact.participants || [], // Ensure participants is always an array
+        }));
+        setPacts(formatted);
+      } catch (e) {
+        setError(e instanceof Error ? e : new Error(String(e)));
+        console.error("Failed to load pacts:", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadPacts();
+  }, [pubkey]);
 
   const renderItem = ({ item }: { item: { id: string; title: string; description: string; status: string; prizePool: number } }) => (
-    <TouchableOpacity onPress={() => router.push('/pact-dashboard')}>
+    <TouchableOpacity onPress={() => router.push({ pathname: '/pact-dashboard', params: { pact: JSON.stringify(item) } })}>
       <View style={styles.pactContainer}>
         <View style={styles.pactHeader}>
           <ThemedText type="subtitle" style={styles.pactTitle}>{item.title}</ThemedText>
@@ -30,6 +76,22 @@ export default function PactPage() {
       </View>
     </TouchableOpacity>
   );
+
+  if (loading) {
+    return (
+      <ThemedView style={[styles.container, { paddingTop: insets.top, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={Colors.dark.tint} />
+      </ThemedView>
+    );
+  }
+
+  if (error) {
+    return (
+      <ThemedView style={[styles.container, { paddingTop: insets.top, justifyContent: 'center', alignItems: 'center' }]}>
+        <ThemedText>Error: {error.message}</ThemedText>
+      </ThemedView>
+    );
+  }
 
   return (
     <ThemedView style={[styles.container, { paddingTop: insets.top }]}>

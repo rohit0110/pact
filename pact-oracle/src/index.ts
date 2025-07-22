@@ -157,6 +157,10 @@ app.get('/api/pacts/:pubkey', async (req, res) => {
   }
 });
 
+app.get('/api/test', async (req, res) => {
+  return res.status(200).json({ message: 'This endpoint is not implemented yet.' });
+});
+
 /**
  * API endpoint to relay and pay for user-initiated transactions.
  */

@@ -7,6 +7,13 @@ import { ThemedView } from '@/components/ThemedView';
 import { Colors } from '@/constants/Colors';
 import { Image } from 'expo-image';
 
+const dummyProfile = {
+  name: 'John Doe',
+  active_pacts: 4,
+  pacts_won: 8,
+  pacts_lost: 2,
+};
+
 export default function ProfilePage() {
   const insets = useSafeAreaInsets();
 
@@ -14,21 +21,21 @@ export default function ProfilePage() {
     <ThemedView style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.profileHeader}>
         <Image source={{ uri: 'https://i.pravatar.cc/150?u=a042581f4e29026704d' }} style={styles.profileImage} />
-        <ThemedText type="title">John Doe</ThemedText>
+        <ThemedText type="title">{dummyProfile.name}</ThemedText>
         <ThemedText type="subtitle">@johndoe</ThemedText>
       </View>
       <View style={styles.statsContainer}>
         <View style={styles.stat}>
-          <ThemedText style={styles.statNumber}>12</ThemedText>
-          <ThemedText style={styles.statLabel}>Pacts Created</ThemedText>
+          <ThemedText style={styles.statNumber}>{dummyProfile.active_pacts}</ThemedText>
+          <ThemedText style={styles.statLabel}>Active Pacts</ThemedText>
         </View>
         <View style={styles.stat}>
-          <ThemedText style={styles.statNumber}>8</ThemedText>
-          <ThemedText style={styles.statLabel}>Pacts Completed</ThemedText>
+          <ThemedText style={styles.statNumber}>{dummyProfile.pacts_won}</ThemedText>
+          <ThemedText style={styles.statLabel}>Pacts Won</ThemedText>
         </View>
         <View style={styles.stat}>
-          <ThemedText style={styles.statNumber}>4</ThemedText>
-          <ThemedText style={styles.statLabel}>Pacts in Progress</ThemedText>
+          <ThemedText style={styles.statNumber}>{dummyProfile.pacts_lost}</ThemedText>
+          <ThemedText style={styles.statLabel}>Pacts Lost</ThemedText>
         </View>
       </View>
     </ThemedView>

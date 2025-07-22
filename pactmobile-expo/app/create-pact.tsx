@@ -28,7 +28,7 @@ export default function CreatePactScreen() {
 
   return (
     <ThemedView style={[styles.container, { paddingTop: insets.top }]}>
-      <ThemedText type="title">Create a New Pact</ThemedText>
+      <ThemedText type="title" style={{ marginBottom: 20 }}>Create a New Pact</ThemedText>
       <TextInput style={styles.input} placeholder="Pact Name" placeholderTextColor={Colors.dark.icon} />
       <TextInput style={styles.input} placeholder="Pact Details" placeholderTextColor={Colors.dark.icon} />
       <TextInput style={styles.input} placeholder="Stake" placeholderTextColor={Colors.dark.icon} keyboardType="numeric" />
