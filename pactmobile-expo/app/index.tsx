@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,10 +11,14 @@ import {
   usePrivy,
   useLoginWithEmail,
   useLoginWithOAuth,
+  useEmbeddedSolanaWallet
 } from '@privy-io/expo';
+import { fetchPlayerProfile } from '@/services/api/pactService';
+import { router } from 'expo-router';
 
-export default function HomeScreen() {
+export default function LoginScreen() {
   const { isReady, user, logout } = usePrivy();
+  const { wallets } = useEmbeddedSolanaWallet();
   const { sendCode, loginWithCode } = useLoginWithEmail();
   const { login: loginWithGoogle } = useLoginWithOAuth();
 
@@ -23,12 +27,34 @@ export default function HomeScreen() {
   const [codeSent, setCodeSent] = useState(false);
   const [otpLoading, setOtpLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(false);
 
-  if (!isReady) {
+  useEffect(() => {
+    const handleUserLogin = async () => {
+      if (user) {
+        setProfileLoading(true);
+        try {
+          // Check if player profile exists
+          
+          await fetchPlayerProfile(wallets![0].address);
+          router.replace('/(tabs)'); // Redirect to main tabbed home screen
+        } catch (error) {
+          // If profile not found, redirect to create profile page
+          router.replace('/create-profile');
+        } finally {
+          setProfileLoading(false);
+        }
+      }
+    };
+
+    handleUserLogin();
+  }, [user]);
+
+  if (!isReady || profileLoading) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" />
-        <Text style={styles.text}>Initializing Privy...</Text>
+        <Text style={styles.text}>Initializing...</Text>
       </View>
     );
   }
@@ -45,8 +71,7 @@ export default function HomeScreen() {
           onPress={async () => {
             try {
               setGoogleLoading(true);
-              const loggedInUser = await loginWithGoogle({ provider: 'google' });
-              console.log('Google login success', loggedInUser?.id);
+              await loginWithGoogle({ provider: 'google' });
             } catch (err) {
               console.error('Google login failed', err);
             } finally {

@@ -7,7 +7,6 @@ import 'react-native-get-random-values';
 import '@ethersproject/shims';
 
 import { PrivyProvider } from '@privy-io/expo';
-import { Slot } from 'expo-router';
 import Constants from 'expo-constants';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';

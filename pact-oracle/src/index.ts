@@ -1,15 +1,17 @@
 import express from 'express';
 import cron from 'node-cron';
 import dotenv from 'dotenv';
-import { Connection, Keypair, Transaction } from '@solana/web3.js';
+import { Connection, Keypair, Transaction, PublicKey, SystemProgram } from '@solana/web3.js';
 import bs58 from 'bs58';
 import { openDb } from './database';
 import { runIndexer } from './indexer';
 import { IDL, Pact } from './idl/idl';
 import { Program, AnchorProvider, Wallet } from '@coral-xyz/anchor';
 
-dotenv.config();
 
+dotenv.config();
+const rateLimit = require('express-rate-limit');
+const crypto = require('crypto');
 // --- Solana Setup ---
 
 /**
@@ -104,6 +106,68 @@ app.get('/', (req, res) => {
 });
 
 /**
+ * API endpoint to create a new player profile.
+ * This endpoint is used to initialize a player's profile in the database.
+ */
+app.post('/api/players', async (req, res) => {
+  try {
+    const { pubkey, name } = req.body;
+    if (!pubkey || !name) {
+      return res.status(400).json({ error: 'Public key and name are required.' });
+    }
+
+    const connection = getSolanaConnection();
+    const appVaultKeypair = getAppVaultKeypair();
+    const playerPubkey = new PublicKey(pubkey);
+
+    const provider = new AnchorProvider(connection, new Wallet(appVaultKeypair), {});
+    const program = new Program<Pact>(IDL, process.env.PROGRAM_ID!, provider);
+
+    // Derive PDA
+    const [playerProfilePDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("player_profile"), playerPubkey.toBuffer()],
+      program.programId
+    );
+
+    // Optional: skip if already exists
+    const existing = await connection.getAccountInfo(playerProfilePDA);
+    if (existing) {
+      return res.status(409).json({ error: 'Player profile already exists.' });
+    }
+
+    // Build transaction
+    const transaction = await program.methods
+      .initializePlayerProfile(name)
+      .accounts({
+        playerProfile: playerProfilePDA,
+        appVault: appVaultKeypair.publicKey,
+        player: playerPubkey,
+        systemProgram: SystemProgram.programId,
+      })
+      .transaction();
+
+    transaction.feePayer = appVaultKeypair.publicKey;
+    const { blockhash } = await connection.getLatestBlockhash();
+    transaction.recentBlockhash = blockhash;
+
+    // Sign and send
+    transaction.partialSign(appVaultKeypair);
+    const signature = await connection.sendRawTransaction(transaction.serialize());
+    await connection.confirmTransaction(signature, 'confirmed');
+
+    res.status(200).json({
+      signature,
+      message: 'Player profile created successfully.',
+    });
+
+  } catch (error) {
+    console.error('Error creating player profile transaction:', error);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+
+/**
  * API endpoint to get all indexed pacts.
  * Most probably will not be used in production, but useful for debugging.
  */
@@ -189,34 +253,68 @@ app.post('/api/relay-transaction', async (req, res) => {
       return res.status(400).json({ error: 'Transaction not provided.' });
     }
 
-    const connection = getSolanaConnection();
-    const appVaultKeypair = getAppVaultKeypair();
+    const connection = getSolanaConnection(); // Your cluster connection
+    const appVaultKeypair = getAppVaultKeypair(); // Your signer
 
-    // TODO: 1. Deserialize the transaction
-    // const transactionBuffer = Buffer.from(base64Transaction, 'base64');
-    // const transaction = Transaction.from(transactionBuffer);
+    // 1. Deserialize
+    const transactionBuffer = Buffer.from(base64Transaction, 'base64');
+    const transaction = Transaction.from(transactionBuffer);
 
-    // TODO: 2. Security Verification
-    // - Check that the feePayer is the appVaultKeypair.publicKey
-    // - Check the instruction programId and that it's an allowed instruction
+    // 2. Security Check — Only allow if fee payer is vault
+    if (!transaction.feePayer || !transaction.feePayer.equals(appVaultKeypair.publicKey)) {
+      return res.status(403).json({ error: 'Unauthorized fee payer.' });
+    }
 
-    // TODO: 3. Sign the transaction with the app vault's key
-    // transaction.partialSign(appVaultKeypair);
+    // 3. Instruction whitelist (only allow instructions to your program)
+    const allowedProgramId = new PublicKey('HBSRo9sKjWmqTteMRPjVF2xcqratjhF5Hu5GozqctNA4');
+    for (const ix of transaction.instructions) {
+      if (!ix.programId.equals(allowedProgramId)) {
+        return res.status(403).json({ error: 'Contains instruction to non-whitelisted program.' });
+      }
 
-    // TODO: 4. Send and confirm the transaction
-    // const signature = await connection.sendRawTransaction(transaction.serialize());
-    // await connection.confirmTransaction(signature, 'confirmed');
+      const discriminator = ix.data.subarray(0, 8);
+      const isAllowed = Object.values(allowedMethods).some((d) => discriminator.equals(d));
+      if (!isAllowed) {
+        return res.status(403).json({ error: 'Disallowed instruction in transaction.' });
+      }
+    }
 
-    // For now, returning a placeholder signature
-    const signature = '2xJ...placeholder...4vT';
-    console.log('Transaction relayed successfully with signature:', signature);
+
+    // 4. Partial sign
+    transaction.partialSign(appVaultKeypair);
+
+    // 5. Relay
+    const signature = await connection.sendRawTransaction(transaction.serialize());
+    await connection.confirmTransaction(signature, 'confirmed');
+
+    console.log('✅ Relayed tx with signature:', signature);
     res.status(200).json({ signature });
 
   } catch (error) {
-    console.error('Error in /api/relay-transaction:', error);
+    console.error('❌ Relay error:', error);
     res.status(500).json({ error: 'Internal server error.' });
   }
 });
+
+/*
+  * API endpoint to delete a player profile.
+  * This endpoint allows the deletion of a player's profile from the database.
+  */
+app.post('/api/delete/', async (req, res) => {
+  try {
+    const { pubkey } = req.body;
+    if (!pubkey) {
+      return res.status(400).json({ error: 'Public key not provided.' });
+    }
+    const db = await openDb();
+    await db.run('DELETE FROM player_profiles WHERE pubkey = ?', [pubkey]);
+    res.status(200).json({ message: 'Player profile deleted successfully.' });
+  } catch (error) {
+    console.error('Error deleting player profile:', error);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
 
 app.listen(port, async () => {
   // Open the database connection when the server starts
@@ -225,5 +323,32 @@ app.listen(port, async () => {
   await runOracleAndIndexer(); // run once immediately
 
   // Schedule the oracle to run every 10 minutes.
-  cron.schedule('*/10 * * * *', runOracleAndIndexer);
+  cron.schedule('* * * * *', runOracleAndIndexer);
 });
+
+// RATE LIMIT HELPER
+const relayLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 10, // limit each IP to 10 requests per minute
+  message: 'Too many requests from this IP, please try again later.',
+});
+app.use('/api/relay-transaction', relayLimiter);
+
+// HELPER FUNCTIONS
+function getAnchorDiscriminator(name: string): Buffer {
+  const preimage = `global:${name}`;
+  return crypto.createHash('sha256').update(preimage).digest().subarray(0, 8);
+}
+
+const allowedMethods: { [key: string]: Buffer } = {
+  initializePlayerProfile: getAnchorDiscriminator('initialize_player_profile'),
+  initializeChallengePact: getAnchorDiscriminator('initialize_challenge_pact'),
+  joinChallengePact: getAnchorDiscriminator('join_challenge_pact'),
+  stakeAmountForChallengePact: getAnchorDiscriminator('stake_amount_for_challenge_pact'),
+  startChallengePact: getAnchorDiscriminator('start_challenge_pact'),
+  endChallengePact: getAnchorDiscriminator('end_challenge_pact'),
+  updatePlayerGoal: getAnchorDiscriminator('update_player_goal')
+};
+
+
+
