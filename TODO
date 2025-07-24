@@ -1,0 +1,10 @@
+1) Completing the entire integration for ChallengeInfinitePact
+    1.1) Var->eliminated_at_day Last 30 days for Infinite as well OR Days they lasted. TODAY - WHEN PACT STARTED , WHEN ELIMINATED YYYYYN-----
+    1.2) TotalXInDays
+2) Add Timebound Contract
+3) Integrate Timebound function calls in both oracle and frontend
+4) USER HISTORY FOR TIMEBOUND PACTS
+
+----------------
+FRONTEND ASPECT
+1) 

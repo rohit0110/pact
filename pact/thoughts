@@ -1,0 +1,30 @@
+2 flows
+- 1 challenge pact: 1 winner, infinite duration
+- 1 accountability pact: multiple winners, set duration
+
+CHALLENGE PACT:
+- 1 winner
+- infinite duration
+- same goal for everyone, set by creator
+- same stake amount, set by creator
+- Max Limit of people: 10
+
+ACCOUNTABILITY PACT:
+- multiple winners possible
+- set duration. Max Duration 30 days
+- different goals, set by each person
+- pact cant start till all joined users have goals set
+
+GOALS
+- Strava - Running related goals
+- Github/Leetcode - Coding related goals
+- Screentime - Mental Health related goals.
+
+GOAL_TYPES
+- EVERY DAY -> X steps Everyday
+- CUMULATIVE -> Complete 30 leetcode problems within Y days
+
+------------------------------------------------------------------------
+player_pact_profile is player goal profile, sep for each pact
+player_profile is the main profile for stats and shit
+
