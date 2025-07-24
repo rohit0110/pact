@@ -47,7 +47,7 @@ export default function PactPage() {
           stake: number;
           [key: string]: any;
         };
-
+        console.log(data);
         const formatted = (data as PactApiType[]).map((pact: PactApiType) => ({
           ...pact,
           prizePool: pact.prize_pool,
