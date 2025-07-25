@@ -6,13 +6,18 @@ import { Colors } from '@/constants/Colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams } from 'expo-router';
 import { useEmbeddedSolanaWallet } from '@privy-io/expo';
-import { stakeInPact } from '@/services/api/pactService';
+import { stakeInPact, startChallengePact } from '@/services/api/pactService';
 import { PublicKey } from '@solana/web3.js';
+
+// This should be in a shared constants file, but for now, defining it here.
+const BACKEND_FEE_PAYER_ADDRESS = 'DfhwXBtE5D9R3Sg5tLpGjaq1bj7J3vuSrcBjRpzD8Sss';
 
 export default function PactDashboardPage() {
   const insets = useSafeAreaInsets();
   const { pact } = useLocalSearchParams();
+  const { wallets } = useEmbeddedSolanaWallet(); // Hooks moved to the top
 
+  const userPublicKey = wallets?.[0]?.address;
   const currentPact = typeof pact === 'string' ? JSON.parse(pact) : pact;
 
   if (!currentPact) {
@@ -27,9 +32,6 @@ export default function PactDashboardPage() {
   const activeParticipants = participants.filter(p => p.is_eliminated === 0);
   const eliminatedParticipants = participants.filter(p => p.is_eliminated === 1);
 
-  const { wallets, provider } = useEmbeddedSolanaWallet();
-  const userPublicKey = wallets?.[0]?.address;
-
   const currentUserParticipant = participants.find(p => p.pubkey === userPublicKey);
   const hasStaked = currentUserParticipant ? currentUserParticipant.has_staked === 1 : false;
 
@@ -37,16 +39,38 @@ export default function PactDashboardPage() {
   const allStaked = participants.every(p => p.has_staked === 1);
 
   const handleStake = async () => {
+    const wallet = wallets?.[0];
+    const provider = await wallet?.getProvider();
+    if (!userPublicKey || !provider) {
+      console.error("User public key or provider not found.");
+      return;
+    }
+    console.log("Provider object in handleStake:", provider); // Added for debugging
+    try {
+      await stakeInPact(
+        new PublicKey(currentPact.pubkey),
+        new PublicKey(userPublicKey),
+        provider,
+        currentPact.stake_amount
+      );
+      console.log("Staked successfully");
+      // TODO: Add logic to refresh the pact data to reflect the new state
+    } catch (error) {
+      console.error("Failed to stake:", error);
+    }
+  };
+
+  const handleStartPact = async () => {
     if (!userPublicKey || !provider) {
       console.error("User public key or provider not found.");
       return;
     }
     try {
-      await stakeInPact(new PublicKey(currentPact.pubkey), new PublicKey(userPublicKey), provider);
-      console.log("Staked successfully");
+      await startChallengePact(new PublicKey(currentPact.pubkey), new PublicKey(userPublicKey), provider);
+      console.log("Pact started successfully");
       // TODO: Add logic to refresh the pact data to reflect the new state
     } catch (error) {
-      console.error("Failed to stake:", error);
+      console.error("Failed to start pact:", error);
     }
   };
 
@@ -64,7 +88,7 @@ export default function PactDashboardPage() {
         <View style={styles.detailsContainer}>
           <ThemedText style={styles.detail}>Creator: {currentPact.creator}</ThemedText>
           <ThemedText style={styles.detail}>Status: {currentPact.status}</ThemedText>
-          <ThemedText style={styles.detail}>Stake: ${currentPact.stake}</ThemedText>
+          <ThemedText style={styles.detail}>Stake: ${currentPact.stake_amount}</ThemedText>
           <ThemedText style={styles.detail}>Prize Pool: ${currentPact.prize_pool}</ThemedText>
         </View>
 
@@ -98,10 +122,7 @@ export default function PactDashboardPage() {
           <TouchableOpacity
             style={[styles.button, !allStaked && styles.disabledButton]}
             disabled={!allStaked}
-            onPress={() => {
-              // Handle "Start Pact" button press
-              console.log("Start Pact button pressed");
-            }}
+            onPress={handleStartPact}
           >
             <ThemedText style={styles.buttonText}>Start Pact</ThemedText>
           </TouchableOpacity>

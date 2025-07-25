@@ -1,15 +1,15 @@
-import { Connection, Keypair, SystemProgram, TransactionMessage, VersionedTransaction, PublicKey } from '@solana/web3.js';
+import { Connection, SystemProgram, TransactionMessage, VersionedTransaction, PublicKey } from '@solana/web3.js';
 import { BN } from '@coral-xyz/anchor';
 import { getPactProgram } from '@/program/pact';
 
 const BASE_URL = 'http://10.0.2.2:3000';
+const BACKEND_FEE_PAYER_ADDRESS = 'DfhwXBtE5D9R3Sg5tLpGjaq1bj7J6vuSrcBjRpzD8Sss'; // IMPORTANT: Replace with your backend's actual fee payer public key
 
 export const fetchPlayerProfile = async (pubkey: string) => {
   try {
     console.log(`Fetching profile for public key: ${pubkey}`);
     const response = await fetch(`${BASE_URL}/api/players/${pubkey}`);
     if (!response.ok) {
-      console.log("TILL HERE");
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     const data = await response.json();
@@ -28,27 +28,12 @@ export const fetchPacts = async (pubkey: string) => {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     const data = await response.json();
-    console.log(data);
     return data;
   } catch (e) {
     console.error("Failed to fetch pacts:", e);
     throw e;
   }
 };
-
-// export const fetchAllPacts = async () => {
-//   try {
-//     const response = await fetch(`${BASE_URL}/api/pacts/`);
-//     if (!response.ok) {
-//       throw new Error(`HTTP error! status: ${response.status}`);
-//     }
-//     const data = await response.json();
-//     return data;
-//   } catch (e) {
-//     console.error("Failed to fetch pact details:", e);
-//     throw e;
-//   }
-// };
 
 export const createPlayerProfile = async (userPublicKey: PublicKey, name: string, provider: any) => {
   try {
@@ -113,9 +98,6 @@ export const createPlayerProfile = async (userPublicKey: PublicKey, name: string
   }
 };
 
-// Placeholder for your backend's fee payer address
-const BACKEND_FEE_PAYER_ADDRESS = 'DfhwXBtE5D9R3Sg5tLpGjaq1bj7J6vuSrcBjRpzD8Sss'; // <<< IMPORTANT: Replace with your backend's actual fee payer public key
-
 export const createPact = async (pactData: {
   name: string;
   description: string;
@@ -130,7 +112,6 @@ export const createPact = async (pactData: {
     const connection = new Connection('http://10.0.2.2:8899', 'confirmed');
     const program = getPactProgram(connection, provider);
 
-    // Derive all PDAs
     const [playerProfilePDA] = PublicKey.findProgramAddressSync(
         [Buffer.from("player_profile"), userPublicKey.toBuffer()],
         program.programId
@@ -214,7 +195,7 @@ export const createPact = async (pactData: {
   }
 };
 
-export const stakeInPact = async (pactPubkey: PublicKey, userPublicKey: PublicKey, provider: any) => {
+export const stakeInPact = async (pactPubkey: PublicKey, userPublicKey: PublicKey, provider: any, amount: number) => {
   try {
     const connection = new Connection('http://10.0.2.2:8899', 'confirmed');
     const program = getPactProgram(connection, provider);
@@ -224,11 +205,18 @@ export const stakeInPact = async (pactPubkey: PublicKey, userPublicKey: PublicKe
       program.programId
     );
 
+    const [playerGoalPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("player_pact_profile"), userPublicKey.toBuffer(), pactPubkey.toBuffer()],
+      program.programId
+    );
+
     const instruction = await program.methods
-      .stake()
+      .stakeAmountForChallengePact(new BN(amount))
       .accounts({
         challengePact: pactPubkey,
+        playerGoal: playerGoalPDA,
         pactVault: pactVaultPDA,
+        appVault: new PublicKey(BACKEND_FEE_PAYER_ADDRESS),
         player: userPublicKey,
         systemProgram: SystemProgram.programId,
       })
@@ -236,19 +224,99 @@ export const stakeInPact = async (pactPubkey: PublicKey, userPublicKey: PublicKe
 
     const { blockhash } = await connection.getLatestBlockhash();
     const message = new TransactionMessage({
-      payerKey: userPublicKey,
+      payerKey: new PublicKey(BACKEND_FEE_PAYER_ADDRESS),
       recentBlockhash: blockhash,
       instructions: [instruction],
     }).compileToV0Message();
 
     const transaction = new VersionedTransaction(message);
+    const serializedMessage = Buffer.from(transaction.message.serialize()).toString('base64');
 
-    const { signature } = await provider.signAndSendTransaction(transaction);
+    const { signature: serializedUserSignature } = await provider.request({
+        method: 'signMessage',
+        params: { message: serializedMessage, display: 'utf8' },
+    });
 
-    console.log('Staked successfully:', signature);
-    return signature;
+    const userSignature = Buffer.from(serializedUserSignature, 'base64');
+    transaction.addSignature(userPublicKey, userSignature);
+
+    const serializedTransaction = Buffer.from(transaction.serialize()).toString('base64');
+
+    const response = await fetch(`${BASE_URL}/api/relay-transaction`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ transaction: serializedTransaction }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`HTTP error! status: ${response.status}, message: ${errorData.error || 'Unknown error'}`);
+    }
+
+    const data = await response.json();
+    console.log('Stake transaction sent:', data);
+    return data;
   } catch (e) {
     console.error("Failed to stake in pact:", e);
     throw e;
   }
 };
+
+export const startChallengePact = async (pact_pubkey: PublicKey,userPublicKey: PublicKey, provider: any) => {
+  try {
+    const connection = new Connection('http://10.0.2.2:8899', 'confirmed');
+    const program = getPactProgram(connection, provider);
+
+    const instruction = await program.methods
+      .startChallengePact()
+      .accounts({
+        challengePact: pact_pubkey,
+        appVault: new PublicKey(BACKEND_FEE_PAYER_ADDRESS),
+        player: userPublicKey,
+        systemProgram: SystemProgram.programId,
+      })
+      .instruction();
+
+    const { blockhash } = await connection.getLatestBlockhash();
+    const message = new TransactionMessage({
+      payerKey: new PublicKey(BACKEND_FEE_PAYER_ADDRESS),
+      recentBlockhash: blockhash,
+      instructions: [instruction],
+    }).compileToV0Message();
+
+    const transaction = new VersionedTransaction(message);
+    const serializedMessage = Buffer.from(transaction.message.serialize()).toString('base64');
+
+    const { signature: serializedUserSignature } = await provider.request({
+        method: 'signMessage',
+        params: { message: serializedMessage, display: 'utf8' },
+    });
+
+    const userSignature = Buffer.from(serializedUserSignature, 'base64');
+    transaction.addSignature(userPublicKey, userSignature);
+
+    const serializedTransaction = Buffer.from(transaction.serialize()).toString('base64');
+
+    const response = await fetch(`${BASE_URL}/api/relay-transaction`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ transaction: serializedTransaction }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`HTTP error! status: ${response.status}, message: ${errorData.error || 'Unknown error'}`);
+    }
+
+    const data = await response.json();
+    console.log('Start Pact transaction sent:', data);
+    return data;
+  } catch (e) {
+    console.error("Failed to Start Pact", e);
+    throw e;
+  } 
+}
