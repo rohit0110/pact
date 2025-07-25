@@ -187,19 +187,47 @@ app.get('/api/pacts', async (req, res) => {
  * API endpoint to get all pacts a specific player is a part of.
  */
 app.get('/api/players/:pubkey/pacts', async (req, res) => {
-    try {
-        const { pubkey } = req.params;
-        const db = await openDb();
-        const pacts = await db.all(
-            'SELECT T2.* FROM participants AS T1 JOIN pacts AS T2 ON T1.pact_pubkey = T2.pubkey WHERE T1.player_pubkey = ?',
-            pubkey
+  try {
+    const { pubkey } = req.params;
+    const db = await openDb();
+
+    // Get all pacts the player is a part of
+    const pacts = await db.all(
+      `
+      SELECT T2.* 
+      FROM participants AS T1 
+      JOIN pacts AS T2 ON T1.pact_pubkey = T2.pubkey 
+      WHERE T1.player_pubkey = ?
+      `,
+      pubkey
+    );
+
+    // For each pact, fetch all its participants (only pact-specific info)
+    const detailedPacts = await Promise.all(
+      pacts.map(async (pact) => {
+        const participants = await db.all(
+          `
+          SELECT p.player_pubkey AS pubkey, p.has_staked, p.is_eliminated
+          FROM participants AS p
+          WHERE p.pact_pubkey = ?
+          `,
+          pact.pubkey
         );
-        res.status(200).json(pacts);
-    } catch (error) {
-        console.error(`Error in /api/players/${req.params.pubkey}/pacts:`, error);
-        res.status(500).json({ error: 'Internal server error.' });
-    }
+
+        return {
+          ...pact,
+          participants,
+        };
+      })
+    );
+
+    res.status(200).json(detailedPacts);
+  } catch (error) {
+    console.error(`Error in /api/players/${req.params.pubkey}/pacts:`, error);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
 });
+
 
 
 /**

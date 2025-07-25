@@ -1,17 +1,17 @@
 
 import React from 'react';
-import { StyleSheet, View, ScrollView } from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { Colors } from '@/constants/Colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams } from 'expo-router';
+import { useEmbeddedSolanaWallet } from '@privy-io/expo';
 
 export default function PactDashboardPage() {
   const insets = useSafeAreaInsets();
   const { pact } = useLocalSearchParams();
 
-  // Parse the pact object if it's passed as a string (which it often is in URL params)
   const currentPact = typeof pact === 'string' ? JSON.parse(pact) : pact;
 
   if (!currentPact) {
@@ -23,8 +23,14 @@ export default function PactDashboardPage() {
   }
 
   const participants = currentPact.participants || [];
-  const activeParticipants = participants.filter(p => p.status === 'active');
-  const eliminatedParticipants = participants.filter(p => p.status === 'eliminated');
+  const activeParticipants = participants.filter(p => p.is_eliminated === 0);
+  const eliminatedParticipants = participants.filter(p => p.is_eliminated === 1);
+
+  const { wallets } = useEmbeddedSolanaWallet();
+  const userPublicKey = wallets?.[0]?.address;
+
+  const isCreator = userPublicKey && currentPact.creator === userPublicKey;
+  const allStaked = participants.every(p => p.has_staked === 1);
 
   return (
     <ThemedView style={[styles.container, { paddingTop: insets.top }]}>
@@ -44,7 +50,7 @@ export default function PactDashboardPage() {
           <View style={styles.participantSection}>
             <ThemedText type="defaultSemiBold">Active ({activeParticipants.length})</ThemedText>
             {activeParticipants.map((p, index) => (
-              <ThemedText key={index} style={styles.participantName}>{p.name}</ThemedText>
+              <ThemedText key={index} style={styles.participantName}>{p.pubkey}</ThemedText>
             ))}
           </View>
 
@@ -52,12 +58,26 @@ export default function PactDashboardPage() {
             <View style={styles.participantSection}>
               <ThemedText type="defaultSemiBold">Eliminated ({eliminatedParticipants.length})</ThemedText>
               {eliminatedParticipants.map((p, index) => (
-                <ThemedText key={index} style={[styles.participantName, styles.eliminated]}>{p.name}</ThemedText>
+                <ThemedText key={index} style={[styles.participantName, styles.eliminated]}>{p.pubkey}</ThemedText>
               ))}
             </View>
           )}
         </View>
       </ScrollView>
+      {isCreator && (
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={[styles.button, !allStaked && styles.disabledButton]}
+            disabled={!allStaked}
+            onPress={() => {
+              // Handle "Start Pact" button press
+              console.log("Start Pact button pressed");
+            }}
+          >
+            <ThemedText style={styles.buttonText}>Start Pact</ThemedText>
+          </TouchableOpacity>
+        </View>
+      )}
     </ThemedView>
   );
 }
@@ -104,5 +124,21 @@ const styles = StyleSheet.create({
     textDecorationLine: 'line-through',
     color: Colors.dark.icon,
   },
+  buttonContainer: {
+    padding: 16,
+    marginBottom: 24, 
+  },
+  button: {
+    backgroundColor: Colors.dark.tint,
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  disabledButton: {
+    backgroundColor: Colors.dark.icon,
+  },
+  buttonText: {
+    color: Colors.dark.background,
+    fontWeight: 'bold',
+  },
 });
-
