@@ -356,4 +356,3 @@ const allowedMethods: { [key: string]: Buffer } = {
 const allowedProgramId = new PublicKey('HBSRo9sKjWmqTteMRPjVF2xcqratjhF5Hu5GozqctNA4');
 
 
-
