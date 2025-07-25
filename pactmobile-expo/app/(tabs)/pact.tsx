@@ -1,11 +1,11 @@
 
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { StyleSheet, View, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { Colors } from '@/constants/Colors';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { useEmbeddedSolanaWallet } from '@privy-io/expo';
 import { PublicKey } from '@solana/web3.js';
@@ -27,50 +27,62 @@ export default function PactPage() {
 
   const [pacts, setPacts] = useState<PactType[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const embeddedSolanaWallet = useEmbeddedSolanaWallet();
-  const wallet = embeddedSolanaWallet?.wallets?.[0] || null;
-  const walletPublicKey = wallet?.publicKey || null;
+  const { wallets } = useEmbeddedSolanaWallet();
+  const wallet = wallets?.[0] || null;
+  const walletPublicKey = wallet?.address || null;
 
-  useEffect(() => {
-    const loadPacts = async () => {
-      try {
-        console.log(walletPublicKey)
-        const pubkey = new PublicKey(walletPublicKey!);
-        const data = await fetchPacts(pubkey.toString());
-        type PactApiType = {
-          id: string;
-          name: string;
-          description?: string;
-          status: string;
-          prize_pool: number;
-          stake: number;
-          [key: string]: any;
-        };
-        console.log(data);
-        const formatted = (data as PactApiType[]).map((pact: PactApiType) => ({
-          ...pact,
-          prizePool: pact.prize_pool,
-          status: pact.status.charAt(0).toUpperCase() + pact.status.slice(1), // Capitalize status
-          title: pact.name,
-          description: pact.description || 'No description available',
-          id: pact.id,
-          stake: pact.stake_amount,
-          participants: pact.participants || [], // Ensure participants is always an array
-        }));
-        setPacts(formatted);
-      } catch (e) {
-        setError(e instanceof Error ? e : new Error(String(e)));
-        console.error("Failed to load pacts:", e);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadPacts();
+  const loadPacts = useCallback(async () => {
+    if (!walletPublicKey) {
+      setLoading(false);
+      return;
+    }
+    try {
+      const pubkey = new PublicKey(walletPublicKey);
+      const data = await fetchPacts(pubkey.toString());
+      type PactApiType = {
+        id: string;
+        name: string;
+        description?: string;
+        status: string;
+        prize_pool: number;
+        stake: number;
+        [key: string]: any;
+      };
+      const formatted = (data as PactApiType[]).map((pact: PactApiType) => ({
+        ...pact,
+        prizePool: pact.prize_pool,
+        status: pact.status.charAt(0).toUpperCase() + pact.status.slice(1),
+        title: pact.name,
+        description: pact.description || 'No description available',
+        id: pact.id,
+        stake: pact.stake_amount,
+        participants: pact.participants || [],
+      }));
+      setPacts(formatted);
+    } catch (e) {
+      setError(e instanceof Error ? e : new Error(String(e)));
+      console.error("Failed to load pacts:", e);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, [walletPublicKey]);
 
-  if (!embeddedSolanaWallet || !embeddedSolanaWallet.wallets || embeddedSolanaWallet.wallets.length === 0) {
+  useFocusEffect(
+    useCallback(() => {
+      setLoading(true);
+      loadPacts();
+    }, [loadPacts])
+  );
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadPacts();
+  }, [loadPacts]);
+
+  if (!wallet) {
     return (
       <ThemedView style={[styles.container, { paddingTop: insets.top, justifyContent: 'center', alignItems: 'center' }]}>
         <ThemedText>Please connect your wallet to view pacts.</ThemedText>
@@ -78,7 +90,7 @@ export default function PactPage() {
     );
   }
 
-  const renderItem = ({ item }: { item: { id: string; title: string; description: string; status: string; prizePool: number } }) => (
+  const renderItem = ({ item }: { item: PactType }) => (
     <TouchableOpacity onPress={() => router.push({ pathname: '/pact-dashboard', params: { pact: JSON.stringify(item) } })}>
       <View style={styles.pactContainer}>
         <View style={styles.pactHeader}>
@@ -91,7 +103,7 @@ export default function PactPage() {
     </TouchableOpacity>
   );
 
-  if (loading) {
+  if (loading && !refreshing) {
     return (
       <ThemedView style={[styles.container, { paddingTop: insets.top, justifyContent: 'center', alignItems: 'center' }]}>
         <ActivityIndicator size="large" color={Colors.dark.tint} />
@@ -118,6 +130,7 @@ export default function PactPage() {
             <ThemedText type="title">Your Pacts</ThemedText>
           </View>
         }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.dark.tint} />}
       />
       <TouchableOpacity style={styles.fab} onPress={() => router.push('/create-pact')}>
         <IconSymbol name="plus" size={28} color={Colors.dark.background} />
