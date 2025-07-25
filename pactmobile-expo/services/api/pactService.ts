@@ -264,10 +264,18 @@ export const stakeInPact = async (pactPubkey: PublicKey, userPublicKey: PublicKe
   }
 };
 
-export const startChallengePact = async (pact_pubkey: PublicKey,userPublicKey: PublicKey, provider: any) => {
+export const startChallengePact = async (pact_pubkey: PublicKey, userPublicKey: PublicKey, provider: any, participants: any[]) => {
   try {
     const connection = new Connection('http://10.0.2.2:8899', 'confirmed');
     const program = getPactProgram(connection, provider);
+
+    const remainingAccounts = participants.map(p => {
+      const [playerGoalPDA] = PublicKey.findProgramAddressSync(
+        [Buffer.from("player_pact_profile"), new PublicKey(p.pubkey).toBuffer(), pact_pubkey.toBuffer()],
+        program.programId
+      );
+      return { pubkey: playerGoalPDA, isSigner: false, isWritable: false };
+    });
 
     const instruction = await program.methods
       .startChallengePact()
@@ -277,6 +285,7 @@ export const startChallengePact = async (pact_pubkey: PublicKey,userPublicKey: P
         player: userPublicKey,
         systemProgram: SystemProgram.programId,
       })
+      .remainingAccounts(remainingAccounts)
       .instruction();
 
     const { blockhash } = await connection.getLatestBlockhash();

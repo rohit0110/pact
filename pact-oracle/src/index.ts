@@ -8,6 +8,7 @@ import { runIndexer } from './indexer';
 import { IDL, Pact } from './idl/idl';
 import { Program, AnchorProvider, Wallet } from '@coral-xyz/anchor';
 import { Buffer } from 'buffer';
+import { simulateTransaction } from '@coral-xyz/anchor/dist/cjs/utils/rpc';
 
 
 dotenv.config();

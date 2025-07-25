@@ -9,8 +9,6 @@ import { useEmbeddedSolanaWallet } from '@privy-io/expo';
 import { stakeInPact, startChallengePact } from '@/services/api/pactService';
 import { PublicKey } from '@solana/web3.js';
 
-// This should be in a shared constants file, but for now, defining it here.
-const BACKEND_FEE_PAYER_ADDRESS = 'DfhwXBtE5D9R3Sg5tLpGjaq1bj7J3vuSrcBjRpzD8Sss';
 
 export default function PactDashboardPage() {
   const insets = useSafeAreaInsets();
@@ -61,12 +59,14 @@ export default function PactDashboardPage() {
   };
 
   const handleStartPact = async () => {
+    const wallet = wallets?.[0];
+    const provider = await wallet?.getProvider();
     if (!userPublicKey || !provider) {
       console.error("User public key or provider not found.");
       return;
     }
     try {
-      await startChallengePact(new PublicKey(currentPact.pubkey), new PublicKey(userPublicKey), provider);
+      await startChallengePact(new PublicKey(currentPact.pubkey), new PublicKey(userPublicKey), provider, participants);
       console.log("Pact started successfully");
       // TODO: Add logic to refresh the pact data to reflect the new state
     } catch (error) {
@@ -117,7 +117,7 @@ export default function PactDashboardPage() {
           )}
         </View>
       </ScrollView>
-      {isCreator && (
+      {isCreator && currentPact.status === 'Initialized' && (
         <View style={styles.buttonContainer}>
           <TouchableOpacity
             style={[styles.button, !allStaked && styles.disabledButton]}
