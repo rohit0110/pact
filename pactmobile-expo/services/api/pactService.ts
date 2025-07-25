@@ -49,21 +49,62 @@ export const fetchAllPacts = async () => {
   }
 };
 
-export const createPlayerProfile = async (pubkey: string, name: string) => {
+export const createPlayerProfile = async (userPublicKey: PublicKey, name: string, provider: any) => {
   try {
-    console.log(`Creating profile for public key: ${pubkey}`);
-    const response = await fetch(`${BASE_URL}/api/players`, {
+    console.log(`Creating profile for public key: ${userPublicKey.toBase58()}`);
+    const connection = new Connection('http://10.0.2.2:8899', 'confirmed');
+    const program = getPactProgram(connection, provider);
+
+    const [playerProfilePDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("player_profile"), userPublicKey.toBuffer()],
+      program.programId
+    );
+
+    const instruction = await program.methods
+      .initializePlayerProfile(name)
+      .accounts({
+        playerProfile: playerProfilePDA,
+        appVault: new PublicKey(BACKEND_FEE_PAYER_ADDRESS),
+        player: userPublicKey,
+        systemProgram: SystemProgram.programId,
+      })
+      .instruction();
+
+    const { blockhash } = await connection.getLatestBlockhash();
+    const message = new TransactionMessage({
+      payerKey: new PublicKey(BACKEND_FEE_PAYER_ADDRESS),
+      recentBlockhash: blockhash,
+      instructions: [instruction],
+    }).compileToV0Message();
+
+    const transaction = new VersionedTransaction(message);
+    const serializedMessage = Buffer.from(transaction.message.serialize()).toString('base64');
+
+    const { signature: serializedUserSignature } = await provider.request({
+        method: 'signMessage',
+        params: { message: serializedMessage, display: 'utf8' },
+    });
+
+    const userSignature = Buffer.from(serializedUserSignature, 'base64');
+    transaction.addSignature(userPublicKey, userSignature);
+
+    const serializedTransaction = Buffer.from(transaction.serialize()).toString('base64');
+
+    const response = await fetch(`${BASE_URL}/api/relay-transaction`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ "pubkey": pubkey, "name": name }),
+      body: JSON.stringify({ transaction: serializedTransaction }),
     });
+
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const errorData = await response.json();
+      throw new Error(`HTTP error! status: ${response.status}, message: ${errorData.error || 'Unknown error'}`);
     }
+
     const data = await response.json();
-    console.log('Profile created:', data);
+    console.log('Profile creation transaction sent:', data);
     return data;
   } catch (e) {
     console.error("Failed to create player profile:", e);
@@ -88,9 +129,26 @@ export const createPact = async (pactData: {
     const connection = new Connection('http://10.0.2.2:8899', 'confirmed');
     const program = getPactProgram(connection, provider);
 
-    const challengePact = Keypair.generate();
-    const playerGoal = Keypair.generate();
-    const pactVault = Keypair.generate();
+    // Derive all PDAs
+    const [playerProfilePDA] = PublicKey.findProgramAddressSync(
+        [Buffer.from("player_profile"), userPublicKey.toBuffer()],
+        program.programId
+    );
+
+    const [challengePactPDA] = PublicKey.findProgramAddressSync(
+        [Buffer.from("challenge_pact"), Buffer.from(pactData.name), userPublicKey.toBuffer()],
+        program.programId
+    );
+
+    const [playerGoalPDA] = PublicKey.findProgramAddressSync(
+        [Buffer.from("player_pact_profile"), userPublicKey.toBuffer(), challengePactPDA.toBuffer()],
+        program.programId
+    );
+
+    const [pactVaultPDA] = PublicKey.findProgramAddressSync(
+        [Buffer.from("pact_vault"), challengePactPDA.toBuffer()],
+        program.programId
+    );
 
     const instruction = await program.methods
       .initializeChallengePact(
@@ -103,11 +161,11 @@ export const createPact = async (pactData: {
         new BN(pactData.stake)
       )
       .accounts({
-        challengePact: challengePact.publicKey,
-        playerGoal: playerGoal.publicKey,
-        pactVault: pactVault.publicKey,
+        challengePact: challengePactPDA,
+        playerGoal: playerGoalPDA,
+        pactVault: pactVaultPDA,
         appVault: new PublicKey(BACKEND_FEE_PAYER_ADDRESS),
-        playerProfile: userPublicKey, // Assuming userPublicKey is the playerProfile
+        playerProfile: playerProfilePDA,
         player: userPublicKey,
         systemProgram: SystemProgram.programId,
       })

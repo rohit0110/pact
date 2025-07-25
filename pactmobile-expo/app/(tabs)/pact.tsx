@@ -9,7 +9,7 @@ import { useRouter } from 'expo-router';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { useEmbeddedSolanaWallet } from '@privy-io/expo';
 import { PublicKey } from '@solana/web3.js';
-import { fetchPacts, fetchAllPacts } from '../../services/api/pactService';
+import { fetchPacts } from '../../services/api/pactService';
 
 export default function PactPage() {
   const router = useRouter();
@@ -37,7 +37,7 @@ export default function PactPage() {
       try {
         console.log(walletPublicKey)
         const pubkey = new PublicKey(walletPublicKey!);
-        const data = await fetchAllPacts();
+        const data = await fetchPacts(pubkey.toString());
         type PactApiType = {
           id: string;
           name: string;

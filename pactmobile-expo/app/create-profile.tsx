@@ -6,6 +6,7 @@ import { router } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { Colors } from '@/constants/Colors';
+import { PublicKey } from '@solana/web3.js';
 
 export default function CreateProfileScreen() {
   const { wallets } = useEmbeddedSolanaWallet();
@@ -13,8 +14,9 @@ export default function CreateProfileScreen() {
   const [loading, setLoading] = useState(false);
 
   const handleCreateProfile = async () => {
-    if (!wallets || wallets.length === 0) {
-      Alert.alert('Error', 'User not logged in.');
+
+    if (!wallets || wallets.length === 0 ) {
+      Alert.alert('Error', 'User not logged in or provider not available.');
       return;
     }
     if (!name.trim()) {
@@ -24,7 +26,9 @@ export default function CreateProfileScreen() {
 
     setLoading(true);
     try {
-      await createPlayerProfile(wallets[0].address, name); 
+      const userPublicKey = new PublicKey(wallets[0].address);
+      const provider = await wallets[0].getProvider();
+      await createPlayerProfile(userPublicKey, name, provider); 
       Alert.alert('Success', 'Profile created successfully!');
       router.replace('/(tabs)'); // Redirect to home screen
     } catch (error) {

@@ -18,7 +18,7 @@ export type Pact = {
         {
           "name": "player",
           "isMut": false,
-          "isSigner": false
+          "isSigner": true
         },
         {
           "name": "systemProgram",
@@ -64,7 +64,7 @@ export type Pact = {
         {
           "name": "player",
           "isMut": false,
-          "isSigner": false
+          "isSigner": true
         },
         {
           "name": "systemProgram",
@@ -135,7 +135,7 @@ export type Pact = {
         {
           "name": "player",
           "isMut": false,
-          "isSigner": false
+          "isSigner": true
         },
         {
           "name": "systemProgram",
@@ -166,7 +166,7 @@ export type Pact = {
         {
           "name": "appVault",
           "isMut": false,
-          "isSigner": false
+          "isSigner": true
         },
         {
           "name": "player",
@@ -202,7 +202,7 @@ export type Pact = {
         {
           "name": "player",
           "isMut": false,
-          "isSigner": false
+          "isSigner": true
         },
         {
           "name": "systemProgram",
@@ -613,7 +613,7 @@ export const IDL: Pact = {
         {
           "name": "player",
           "isMut": false,
-          "isSigner": false
+          "isSigner": true
         },
         {
           "name": "systemProgram",
@@ -659,7 +659,7 @@ export const IDL: Pact = {
         {
           "name": "player",
           "isMut": false,
-          "isSigner": false
+          "isSigner": true
         },
         {
           "name": "systemProgram",
@@ -730,7 +730,7 @@ export const IDL: Pact = {
         {
           "name": "player",
           "isMut": false,
-          "isSigner": false
+          "isSigner": true
         },
         {
           "name": "systemProgram",
@@ -761,7 +761,7 @@ export const IDL: Pact = {
         {
           "name": "appVault",
           "isMut": false,
-          "isSigner": false
+          "isSigner": true
         },
         {
           "name": "player",
@@ -797,7 +797,7 @@ export const IDL: Pact = {
         {
           "name": "player",
           "isMut": false,
-          "isSigner": false
+          "isSigner": true
         },
         {
           "name": "systemProgram",

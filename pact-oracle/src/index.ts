@@ -1,12 +1,13 @@
 import express from 'express';
 import cron from 'node-cron';
 import dotenv from 'dotenv';
-import { Connection, Keypair, Transaction, PublicKey, SystemProgram } from '@solana/web3.js';
+import { Connection, Keypair, PublicKey, SystemProgram, VersionedTransaction } from '@solana/web3.js';
 import bs58 from 'bs58';
 import { openDb } from './database';
 import { runIndexer } from './indexer';
 import { IDL, Pact } from './idl/idl';
 import { Program, AnchorProvider, Wallet } from '@coral-xyz/anchor';
+import { Buffer } from 'buffer';
 
 
 dotenv.config();
@@ -245,6 +246,7 @@ app.get('/api/players/:pubkey', async (req, res) => {
 /**
  * API endpoint to relay and pay for user-initiated transactions.
  */
+
 app.post('/api/relay-transaction', async (req, res) => {
   try {
     const { transaction: base64Transaction } = req.body;
@@ -253,35 +255,35 @@ app.post('/api/relay-transaction', async (req, res) => {
       return res.status(400).json({ error: 'Transaction not provided.' });
     }
 
-    const connection = getSolanaConnection(); // Your cluster connection
-    const appVaultKeypair = getAppVaultKeypair(); // Your signer
+    const connection = getSolanaConnection(); // Your custom function
+    const appVaultKeypair = getAppVaultKeypair(); // Your fee payer
 
     // 1. Deserialize
     const transactionBuffer = Buffer.from(base64Transaction, 'base64');
-    const transaction = Transaction.from(transactionBuffer);
+    const transaction = VersionedTransaction.deserialize(transactionBuffer);
 
     // 2. Security Check — Only allow if fee payer is vault
-    if (!transaction.feePayer || !transaction.feePayer.equals(appVaultKeypair.publicKey)) {
+    if (!transaction.message || !transaction.message.staticAccountKeys[0].equals(appVaultKeypair.publicKey)) {
       return res.status(403).json({ error: 'Unauthorized fee payer.' });
     }
 
-    // 3. Instruction whitelist (only allow instructions to your program)
-    const allowedProgramId = new PublicKey('HBSRo9sKjWmqTteMRPjVF2xcqratjhF5Hu5GozqctNA4');
-    for (const ix of transaction.instructions) {
-      if (!ix.programId.equals(allowedProgramId)) {
+    // 3. Instruction whitelist
+    for (const ix of transaction.message.compiledInstructions) {
+      const programId = transaction.message.staticAccountKeys[ix.programIdIndex];
+      if (!programId.equals(allowedProgramId)) {
         return res.status(403).json({ error: 'Contains instruction to non-whitelisted program.' });
       }
 
-      const discriminator = ix.data.subarray(0, 8);
+      const data = Buffer.from(ix.data);
+      const discriminator = data.subarray(0, 8);
       const isAllowed = Object.values(allowedMethods).some((d) => discriminator.equals(d));
       if (!isAllowed) {
         return res.status(403).json({ error: 'Disallowed instruction in transaction.' });
       }
     }
 
-
     // 4. Partial sign
-    transaction.partialSign(appVaultKeypair);
+    transaction.sign([appVaultKeypair]);
 
     // 5. Relay
     const signature = await connection.sendRawTransaction(transaction.serialize());
@@ -295,6 +297,7 @@ app.post('/api/relay-transaction', async (req, res) => {
     res.status(500).json({ error: 'Internal server error.' });
   }
 });
+
 
 /*
   * API endpoint to delete a player profile.
@@ -349,6 +352,8 @@ const allowedMethods: { [key: string]: Buffer } = {
   endChallengePact: getAnchorDiscriminator('end_challenge_pact'),
   updatePlayerGoal: getAnchorDiscriminator('update_player_goal')
 };
+
+const allowedProgramId = new PublicKey('HBSRo9sKjWmqTteMRPjVF2xcqratjhF5Hu5GozqctNA4');
 
 
 
