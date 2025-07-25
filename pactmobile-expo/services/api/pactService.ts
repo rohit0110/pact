@@ -213,3 +213,42 @@ export const createPact = async (pactData: {
     throw e;
   }
 };
+
+export const stakeInPact = async (pactPubkey: PublicKey, userPublicKey: PublicKey, provider: any) => {
+  try {
+    const connection = new Connection('http://10.0.2.2:8899', 'confirmed');
+    const program = getPactProgram(connection, provider);
+
+    const [pactVaultPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("pact_vault"), pactPubkey.toBuffer()],
+      program.programId
+    );
+
+    const instruction = await program.methods
+      .stake()
+      .accounts({
+        challengePact: pactPubkey,
+        pactVault: pactVaultPDA,
+        player: userPublicKey,
+        systemProgram: SystemProgram.programId,
+      })
+      .instruction();
+
+    const { blockhash } = await connection.getLatestBlockhash();
+    const message = new TransactionMessage({
+      payerKey: userPublicKey,
+      recentBlockhash: blockhash,
+      instructions: [instruction],
+    }).compileToV0Message();
+
+    const transaction = new VersionedTransaction(message);
+
+    const { signature } = await provider.signAndSendTransaction(transaction);
+
+    console.log('Staked successfully:', signature);
+    return signature;
+  } catch (e) {
+    console.error("Failed to stake in pact:", e);
+    throw e;
+  }
+};

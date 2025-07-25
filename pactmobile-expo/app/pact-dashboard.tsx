@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { StyleSheet, View, ScrollView, TouchableOpacity } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
@@ -7,6 +6,8 @@ import { Colors } from '@/constants/Colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams } from 'expo-router';
 import { useEmbeddedSolanaWallet } from '@privy-io/expo';
+import { stakeInPact } from '@/services/api/pactService';
+import { PublicKey } from '@solana/web3.js';
 
 export default function PactDashboardPage() {
   const insets = useSafeAreaInsets();
@@ -26,14 +27,36 @@ export default function PactDashboardPage() {
   const activeParticipants = participants.filter(p => p.is_eliminated === 0);
   const eliminatedParticipants = participants.filter(p => p.is_eliminated === 1);
 
-  const { wallets } = useEmbeddedSolanaWallet();
+  const { wallets, provider } = useEmbeddedSolanaWallet();
   const userPublicKey = wallets?.[0]?.address;
+
+  const currentUserParticipant = participants.find(p => p.pubkey === userPublicKey);
+  const hasStaked = currentUserParticipant ? currentUserParticipant.has_staked === 1 : false;
 
   const isCreator = userPublicKey && currentPact.creator === userPublicKey;
   const allStaked = participants.every(p => p.has_staked === 1);
 
+  const handleStake = async () => {
+    if (!userPublicKey || !provider) {
+      console.error("User public key or provider not found.");
+      return;
+    }
+    try {
+      await stakeInPact(new PublicKey(currentPact.pubkey), new PublicKey(userPublicKey), provider);
+      console.log("Staked successfully");
+      // TODO: Add logic to refresh the pact data to reflect the new state
+    } catch (error) {
+      console.error("Failed to stake:", error);
+    }
+  };
+
   return (
     <ThemedView style={[styles.container, { paddingTop: insets.top }]}>
+      {!hasStaked && (
+        <View style={styles.notStakedContainer}>
+          <ThemedText style={styles.notStakedText}>Not Staked Yet</ThemedText>
+        </View>
+      )}
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <ThemedText type="title" style={styles.title}>{currentPact.name}</ThemedText>
         <ThemedText style={styles.description}>{currentPact.description}</ThemedText>
@@ -44,6 +67,12 @@ export default function PactDashboardPage() {
           <ThemedText style={styles.detail}>Stake: ${currentPact.stake}</ThemedText>
           <ThemedText style={styles.detail}>Prize Pool: ${currentPact.prize_pool}</ThemedText>
         </View>
+
+        {!hasStaked && (
+          <TouchableOpacity style={styles.stakeButton} onPress={handleStake}>
+            <ThemedText style={styles.stakeButtonText}>Stake</ThemedText>
+          </TouchableOpacity>
+        )}
 
         <View style={styles.participantsContainer}>
           <ThemedText type="subtitle" style={styles.participantsTitle}>Participants</ThemedText>
@@ -105,6 +134,32 @@ const styles = StyleSheet.create({
     color: Colors.dark.text,
     marginBottom: 8,
   },
+  notStakedContainer: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    backgroundColor: Colors.palette.blue,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    zIndex: 1,
+  },
+  notStakedText: {
+    color: Colors.palette.white,
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  stakeButton: {
+    backgroundColor: Colors.palette.teal,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  stakeButtonText: {
+    color: Colors.palette.white,
+    fontWeight: 'bold',
+  },
   participantsContainer: {
     backgroundColor: Colors.palette.darkBlue,
     borderRadius: 8,
@@ -126,7 +181,7 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     padding: 16,
-    marginBottom: 24, 
+    marginBottom: 24,
   },
   button: {
     backgroundColor: Colors.dark.tint,
