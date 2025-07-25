@@ -91,7 +91,7 @@ describe("pact", () => {
         appVault: app_vault.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
-      .signers([app_vault])
+      .signers([player1, app_vault])
       .rpc();
 
     const player1Profile = await program.account.playerProfile.fetch(player1ProfilePDA);
@@ -107,7 +107,7 @@ describe("pact", () => {
         appVault: app_vault.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
-      .signers([app_vault])
+      .signers([player2 ,app_vault])
       .rpc();
 
     const player2Profile = await program.account.playerProfile.fetch(player2ProfilePDA);
@@ -135,7 +135,7 @@ describe("pact", () => {
         playerGoal: player1GoalPDA,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
-      .signers([app_vault])
+      .signers([app_vault, player1])
       .rpc();
 
     const pact = await program.account.challengePact.fetch(challengePactPDA);
@@ -155,7 +155,7 @@ describe("pact", () => {
         playerGoal: player2GoalPDA,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
-      .signers([app_vault])
+      .signers([app_vault, player2])
       .rpc();
 
     const pact = await program.account.challengePact.fetch(challengePactPDA);
@@ -185,7 +185,7 @@ describe("pact", () => {
         appVault: app_vault.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
-      .signers([player1])
+      .signers([player1, app_vault])
       .rpc();
 
     let player1Goal = await program.account.playerGoalForChallengePact.fetch(player1GoalPDA);
@@ -202,7 +202,7 @@ describe("pact", () => {
         appVault: app_vault.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
-      .signers([player2])
+      .signers([player2, app_vault])
       .rpc();
 
     let player2Goal = await program.account.playerGoalForChallengePact.fetch(player2GoalPDA);
@@ -235,7 +235,7 @@ describe("pact", () => {
         { pubkey: player1GoalPDA, isSigner: false, isWritable: false },
         { pubkey: player2GoalPDA, isSigner: false, isWritable: false },
       ])
-      .signers([app_vault])
+      .signers([player1, app_vault])
       .rpc();
 
     const pact = await program.account.challengePact.fetch(challengePactPDA);

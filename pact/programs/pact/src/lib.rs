@@ -234,8 +234,7 @@ pub struct InitializePlayerProfile<'info> {
     pub player_profile: Account<'info,PlayerProfile>,
     #[account(mut)]
     pub app_vault: Signer<'info>,
-    /// CHECK: Player account is used as a seed for the player profile PDA.
-    pub player: AccountInfo<'info>,
+    pub player: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
 
@@ -272,8 +271,7 @@ pub struct InitializeChallengePact<'info> {
         bump
         )]
     pub player_profile: Account<'info, PlayerProfile>,
-    /// CHECK: Player account is the creator of the pact and need key to match to creator to initialize it.
-    pub player: AccountInfo<'info>,
+    pub player: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
 
@@ -297,8 +295,7 @@ pub struct JoinChallengePact<'info> {
         bump,
     )]
     pub player_profile: Account<'info, PlayerProfile>,
-    /// CHECK: Player account is used as a seed for the player goal PDA.
-    pub player: AccountInfo<'info>,
+    pub player: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
 
@@ -318,8 +315,7 @@ pub struct StakeAmountForChallengePact<'info> {
         bump,
     )]
     pub pact_vault: SystemAccount<'info>,
-    /// CHECK: App vault pays the gas fees
-    pub app_vault: AccountInfo<'info>,
+    pub app_vault: Signer<'info>,
     #[account(mut)]
     pub player: Signer<'info>,
     pub system_program: Program<'info, System>,
@@ -331,8 +327,7 @@ pub struct StartChallengePact<'info> {
     pub challenge_pact: Account<'info, ChallengePact>,
     #[account(mut)]
     pub app_vault: Signer<'info>,
-    /// CHECK: Player account is the creator of the pact and need key to match to creator to start it.
-    pub player: AccountInfo<'info>,
+    pub player: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
 
