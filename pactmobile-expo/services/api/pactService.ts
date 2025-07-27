@@ -1,9 +1,11 @@
 import { Connection, SystemProgram, TransactionMessage, VersionedTransaction, PublicKey } from '@solana/web3.js';
 import { BN } from '@coral-xyz/anchor';
 import { getPactProgram } from '@/program/pact';
+import Constants from 'expo-constants';
 
-const BASE_URL = 'http://10.0.2.2:3000';
-const BACKEND_FEE_PAYER_ADDRESS = 'DfhwXBtE5D9R3Sg5tLpGjaq1bj7J6vuSrcBjRpzD8Sss'; // IMPORTANT: Replace with your backend's actual fee payer public key
+const BASE_URL = Constants.expoConfig?.extra?.BASE_URL;
+const BACKEND_FEE_PAYER_ADDRESS = Constants.expoConfig?.extra?.BACKEND_FEE_PAYER_ADDRESS;
+const SOLANA_RPC_URL = Constants.expoConfig?.extra?.SOLANA_RPC_URL;
 
 export const fetchPlayerProfile = async (pubkey: string) => {
   try {
@@ -38,7 +40,7 @@ export const fetchPacts = async (pubkey: string) => {
 export const createPlayerProfile = async (userPublicKey: PublicKey, name: string, provider: any) => {
   try {
     console.log(`Creating profile for public key: ${userPublicKey.toBase58()}`);
-    const connection = new Connection('http://10.0.2.2:8899', 'confirmed');
+    const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
     const program = getPactProgram(connection, provider);
 
     const [playerProfilePDA] = PublicKey.findProgramAddressSync(
@@ -109,7 +111,7 @@ export const createPact = async (pactData: {
   comparisonOperator: any;
 }, userPublicKey: PublicKey, provider: any) => {
   try {
-    const connection = new Connection('http://10.0.2.2:8899', 'confirmed');
+    const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
     const program = getPactProgram(connection, provider);
 
     const [playerProfilePDA] = PublicKey.findProgramAddressSync(
@@ -197,7 +199,7 @@ export const createPact = async (pactData: {
 
 export const stakeInPact = async (pactPubkey: PublicKey, userPublicKey: PublicKey, provider: any, amount: number) => {
   try {
-    const connection = new Connection('http://10.0.2.2:8899', 'confirmed');
+    const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
     const program = getPactProgram(connection, provider);
 
     const [pactVaultPDA] = PublicKey.findProgramAddressSync(
@@ -266,7 +268,7 @@ export const stakeInPact = async (pactPubkey: PublicKey, userPublicKey: PublicKe
 
 export const startChallengePact = async (pact_pubkey: PublicKey, userPublicKey: PublicKey, provider: any, participants: any[]) => {
   try {
-    const connection = new Connection('http://10.0.2.2:8899', 'confirmed');
+    const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
     const program = getPactProgram(connection, provider);
 
     const remainingAccounts = participants.map(p => {

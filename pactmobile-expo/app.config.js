@@ -47,6 +47,9 @@ export default () => ({
     extra: {
       PRIVY_APP_ID: process.env.PRIVY_APP_ID,
       PRIVY_CLIENT_ID: process.env.PRIVY_CLIENT_ID,
+      BACKEND_FEE_PAYER_ADDRESS: process.env.BACKEND_FEE_PAYER_ADDRESS,
+      BASE_URL: process.env.BASE_URL,
+      SOLANA_RPC_URL: process.env.SOLANA_RPC_URL,
     },
   }
 });
