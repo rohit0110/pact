@@ -1,2 +1,4 @@
 1) List cards items go out of screen when the heading is long
-2) When No Pacts returned under that user
+2) Join Pact via code needs to check if user is already a part of that pact before displaying JOIN pact button
+3) Logout button doesnt work after going to another page and coming back
+4) After Staking, Stake bbutton needs to disappear. Staked Button needs to change as well. Will check if that is in CRON

@@ -128,6 +128,9 @@ export default function PactPage() {
         ListHeaderComponent={
           <View style={styles.header}>
             <ThemedText type="title">Your Pacts</ThemedText>
+            <TouchableOpacity style={styles.joinButton} onPress={() => router.push('/join-pact')}>
+              <ThemedText style={styles.joinButtonText}>Join Pact Via Code</ThemedText>
+            </TouchableOpacity>
           </View>
         }
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.dark.tint} />}
@@ -147,6 +150,19 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     paddingTop: 16,
     paddingHorizontal: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  joinButton: {
+    backgroundColor: Colors.dark.tint,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  joinButtonText: {
+    color: Colors.dark.background,
+    fontWeight: 'bold',
   },
   pactContainer: {
     padding: 16,

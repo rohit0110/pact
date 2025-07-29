@@ -37,16 +37,30 @@ export const fetchPacts = async (pubkey: string) => {
   }
 };
 
-export const fetchSpecificPact = async (pubkey: string) => {
+// export const fetchSpecificPact = async (pubkey: string) => {
+//   try {
+//     const response = await fetch(`${BASE_URL}/api/pacts/${pubkey}`);
+//     if (!response.ok) {
+//       throw new Error(`HTTP error! status: ${response.status}`);
+//     }
+//     const data = await response.json();
+//     return data;
+//   } catch (e) {
+//     console.error("Failed to fetch pact:", e);
+//     throw e;
+//   }
+// };
+
+export const fetchPactViaJoinCode = async (joinCode: string) => {
   try {
-    const response = await fetch(`${BASE_URL}/api/pacts/${pubkey}`);
+    const response = await fetch(`${BASE_URL}/api/pacts/code/${joinCode}`);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     const data = await response.json();
     return data;
   } catch (e) {
-    console.error("Failed to fetch pact:", e);
+    console.error("Failed to fetch pact VIA code:", e);
     throw e;
   }
 };
@@ -210,7 +224,7 @@ export const createPact = async (pactData: {
   }
 };
 
-export const joinChallengePact = async (pactPubkey: PublicKey, userPublicKey: PublicKey, provider: any) => {
+export const joinPact = async (pactPubkey: PublicKey, userPublicKey: PublicKey, provider: any) => {
   try {
     const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
     const program = getPactProgram(connection, provider);

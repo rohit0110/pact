@@ -417,7 +417,7 @@ app.listen(port, async () => {
   await runOracleAndIndexer(); // run once immediately
 
   // Schedule the oracle to run every 10 minutes.
-  cron.schedule('* * * * *', runOracleAndIndexer);
+  cron.schedule('*/10 * * * *', runOracleAndIndexer);
 });
 
 // RATE LIMIT HELPER

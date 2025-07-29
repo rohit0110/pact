@@ -23,16 +23,26 @@ export async function runIndexer(connection: Connection, program: Program<Pact>)
     for (const pact of allPacts) {
       const { name, description, creator, status, stake, prizePool, createdAt } = pact.account;
       await db.run(
-        `INSERT OR REPLACE INTO pacts (pubkey, name, description, creator, status, stake_amount, prize_pool, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, 
-         pact.publicKey.toBase58(), 
-         name, 
-         description, 
-         creator.toBase58(), 
-         Object.keys(status)[0], 
-         stake.toNumber(), 
-         prizePool.toNumber(), 
-         createdAt.toNumber()
+        `INSERT INTO pacts (pubkey, name, description, creator, status, stake_amount, prize_pool, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(pubkey) DO UPDATE SET
+           name=excluded.name,
+           description=excluded.description,
+           creator=excluded.creator,
+           status=excluded.status,
+           stake_amount=excluded.stake_amount,
+           prize_pool=excluded.prize_pool,
+           created_at=excluded.created_at`,
+        [
+          pact.publicKey.toBase58(),
+          name,
+          description,
+          creator.toBase58(),
+          Object.keys(status)[0],
+          stake.toNumber(),
+          prizePool.toNumber(),
+          createdAt.toNumber(),
+        ]
       );
     }
 
