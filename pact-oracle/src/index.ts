@@ -6,14 +6,15 @@ import bs58 from 'bs58';
 import { openDb } from './database';
 import { runIndexer } from './indexer';
 import { IDL, Pact } from './idl/idl';
-import { Program, AnchorProvider, Wallet } from '@coral-xyz/anchor';
+import { Program, AnchorProvider, Wallet, BorshCoder, Instruction } from '@coral-xyz/anchor';
 import { Buffer } from 'buffer';
-import { simulateTransaction } from '@coral-xyz/anchor/dist/cjs/utils/rpc';
 
 
 dotenv.config();
 const rateLimit = require('express-rate-limit');
 const crypto = require('crypto');
+const BN = require('bn.js');
+
 // --- Solana Setup ---
 
 /**
@@ -60,7 +61,6 @@ function getAppVaultKeypair(): Keypair {
 
 
 // --- Oracle & Indexer Logic ---
-
 /**
  * The main function for the oracle's cron job.
  * It first updates the local database with the latest on-chain data,
@@ -237,19 +237,39 @@ app.get('/api/players/:pubkey/pacts', async (req, res) => {
  */
 app.get('/api/pacts/:pubkey', async (req, res) => {
   try {
-    const pubkey = req.params.pubkey;
+    const { pubkey } = req.params;
     if (!pubkey) {
       return res.status(400).json({ error: 'Public key not provided.' });
     }
 
     const db = await openDb();
-    const pacts = await db.all('SELECT * FROM pacts WHERE pubkey = ?', [pubkey]);
-    res.status(200).json(pacts);
+
+    // Fetch the pact
+    const pact = await db.get('SELECT * FROM pacts WHERE pubkey = ?', [pubkey]);
+    if (!pact) {
+      return res.status(404).json({ error: 'Pact not found.' });
+    }
+
+    // Fetch all participants for this pact
+    const participants = await db.all(
+      `
+      SELECT player_pubkey AS pubkey, has_staked, is_eliminated
+      FROM participants
+      WHERE pact_pubkey = ?
+      `,
+      [pubkey]
+    );
+
+    res.status(200).json({
+      ...pact,
+      participants,
+    });
   } catch (error) {
-    console.error('Error in /api/pacts/:pubkey:', error);
+    console.error(`Error in /api/pacts/${req.params.pubkey}:`, error);
     res.status(500).json({ error: 'Internal server error.' });
   }
 });
+
 
 /**
  * API endpoint to get a player's profile.
@@ -278,14 +298,20 @@ app.get('/api/players/:pubkey', async (req, res) => {
 
 app.post('/api/relay-transaction', async (req, res) => {
   try {
+    console.log("REACHED");
     const { transaction: base64Transaction } = req.body;
 
     if (!base64Transaction) {
       return res.status(400).json({ error: 'Transaction not provided.' });
     }
 
-    const connection = getSolanaConnection(); // Your custom function
-    const appVaultKeypair = getAppVaultKeypair(); // Your fee payer
+    const connection = getSolanaConnection();
+    const appVaultKeypair = getAppVaultKeypair();
+    const wallet = new Wallet(appVaultKeypair);
+    const provider = new AnchorProvider(connection, wallet, {
+      commitment: 'confirmed',
+    });
+    const program = new Program<Pact>(IDL, process.env.PROGRAM_ID!, provider);
 
     // 1. Deserialize
     const transactionBuffer = Buffer.from(base64Transaction, 'base64');
@@ -295,7 +321,6 @@ app.post('/api/relay-transaction', async (req, res) => {
     if (!transaction.message || !transaction.message.staticAccountKeys[0].equals(appVaultKeypair.publicKey)) {
       return res.status(403).json({ error: 'Unauthorized fee payer.' });
     }
-
     // 3. Instruction whitelist
     for (const ix of transaction.message.compiledInstructions) {
       const programId = transaction.message.staticAccountKeys[ix.programIdIndex];
@@ -318,6 +343,8 @@ app.post('/api/relay-transaction', async (req, res) => {
     const signature = await connection.sendRawTransaction(transaction.serialize());
     await connection.confirmTransaction(signature, 'confirmed');
 
+    // 6. Update database now that transaction is confirmed
+    await updateDatabaseFromTransaction(program, transaction);
     console.log('✅ Relayed tx with signature:', signature);
     res.status(200).json({ signature });
 
@@ -383,5 +410,194 @@ const allowedMethods: { [key: string]: Buffer } = {
 };
 
 const allowedProgramId = new PublicKey('HBSRo9sKjWmqTteMRPjVF2xcqratjhF5Hu5GozqctNA4');
+
+export type InitializePlayerProfileArgs = {
+  name: string;
+};
+
+export type InitializeChallengePactArgs = {
+  name: string;
+  description: string;
+  goalType: { [key: string]: Record<string, unknown> }; // e.g., { dailyGithubContribution: {} }
+  goalValue: typeof BN;
+  verificationType: { [key: string]: Record<string, unknown> }; // e.g., { strava: {} }
+  comparisonOperator: { [key: string]: Record<string, unknown> }; // e.g., { lessThanOrEqual: {} }
+  stake: typeof BN;
+};
+
+export type JoinChallengePactArgs = Record<string, never>; // no args used
+
+export type StakeAmountForChallengePactArgs = {
+  amount: typeof BN;
+};
+
+export type StartChallengePactArgs = Record<string, never>;
+
+export type EndChallengePactArgs = Record<string, never>;
+
+export type UpdatePlayerGoalArgs = {
+  isEliminated: boolean;
+  eliminatedAt?: typeof BN;
+};
+
+async function updateDatabaseFromTransaction(
+  program: Program<Pact>,
+  transaction: VersionedTransaction
+) {
+  const coder = new BorshCoder(program.idl);
+
+  for (const ix of transaction.message.compiledInstructions) {
+    const programId = transaction.message.staticAccountKeys[ix.programIdIndex];
+    
+    // Ensure it's from your program
+    if (!programId.equals(program.programId)) continue;
+
+    const data = Buffer.from(ix.data);
+    const decoded: Instruction | null = coder.instruction.decode(data);
+
+    if (!decoded) {
+      console.log('❌ Unable to decode instruction');
+      continue;
+    }
+
+    console.log('✅ Decoded Instruction:');
+    console.log('Name:', decoded.name);
+    console.log('Args:', decoded.data);
+
+    // Log account pubkeys
+    const db = await openDb();
+
+    switch (decoded.name) {
+      case 'initializePlayerProfile': {
+        const playerProfilePubkey = transaction.message.staticAccountKeys[ix.accountKeyIndexes[0]];
+        const data = decoded.data as InitializePlayerProfileArgs;
+        const playerName = data.name;
+        await db.run(
+          'INSERT OR IGNORE INTO player_profiles (pubkey, name) VALUES (?, ?)',
+          [playerProfilePubkey.toBase58(), playerName]
+        );
+        console.log(`Player profile ${playerName} (${playerProfilePubkey.toBase58()}) initialized.`);
+        break;
+      }
+      case 'initializeChallengePact': {
+        const challengePactPubkey = transaction.message.staticAccountKeys[ix.accountKeyIndexes[0]];
+        const creatorPubkey = transaction.message.staticAccountKeys[ix.accountKeyIndexes[5]];
+        const data = decoded.data as InitializeChallengePactArgs;
+        const { name, description, stake, goalType, goalValue, verificationType, comparisonOperator } = data;
+        const createdAt = Date.now(); // Use current timestamp for creation
+        const status = 'Initialized'; // Initial status
+
+        await db.run(
+          `INSERT OR IGNORE INTO pacts (pubkey, name, description, creator, status, stake_amount, prize_pool, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            challengePactPubkey.toBase58(),
+            name,
+            description,
+            creatorPubkey.toBase58(),
+            status,
+            stake.toString(), // Convert BN to string
+            0, // Prize pool is 0 initially, updated on stake
+            createdAt,
+          ]
+        );
+
+        // Add creator as participant
+        const playerPubkey = creatorPubkey;
+        await db.run(
+          `INSERT OR IGNORE INTO participants (pact_pubkey, player_pubkey, has_staked, is_eliminated) VALUES (?, ?, ?, ?)`,
+          [challengePactPubkey.toBase58(), playerPubkey.toBase58(), false, false]
+        );
+        console.log(`Challenge pact ${name} (${challengePactPubkey.toBase58()}) initialized by ${creatorPubkey.toBase58()}.`);
+        break;
+      }
+      case 'joinChallengePact': {
+        const challengePactPubkey = transaction.message.staticAccountKeys[ix.accountKeyIndexes[0]];
+        const playerPubkey = transaction.message.staticAccountKeys[ix.accountKeyIndexes[4]];
+
+        await db.run(
+          `INSERT OR IGNORE INTO participants (pact_pubkey, player_pubkey, has_staked, is_eliminated) VALUES (?, ?, ?, ?)`,
+          [challengePactPubkey.toBase58(), playerPubkey.toBase58(), false, false]
+        );
+        console.log(`Player ${playerPubkey.toBase58()} joined pact ${challengePactPubkey.toBase58()}.`);
+        break;
+      }
+      case 'stakeAmountForChallengePact': {
+        const challengePactPubkey = transaction.message.staticAccountKeys[ix.accountKeyIndexes[0]];
+        const playerPubkey = transaction.message.staticAccountKeys[ix.accountKeyIndexes[4]];
+        const data = decoded.data as StakeAmountForChallengePactArgs;
+        const stakeAmount = data.amount;
+
+        await db.run(
+          `UPDATE participants SET has_staked = ? WHERE pact_pubkey = ? AND player_pubkey = ?`,
+          [true, challengePactPubkey.toBase58(), playerPubkey.toBase58()]
+        );
+
+        // Update prize pool in pacts table
+        await db.run(
+          `UPDATE pacts SET prize_pool = prize_pool + ? WHERE pubkey = ?`,
+          [stakeAmount.toString(), challengePactPubkey.toBase58()]
+        );
+        console.log(`Player ${playerPubkey.toBase58()} staked ${stakeAmount.toString()} in pact ${challengePactPubkey.toBase58()}.`);
+        break;
+      }
+      case 'startChallengePact': {
+        const challengePactPubkey = transaction.message.staticAccountKeys[ix.accountKeyIndexes[0]];
+        await db.run(
+          `UPDATE pacts SET status = ? WHERE pubkey = ?`,
+          ['Active', challengePactPubkey.toBase58()]
+        );
+        console.log(`Pact ${challengePactPubkey.toBase58()} started.`);
+        break;
+      }
+      case 'endChallengePact': {
+        const challengePactPubkey = transaction.message.staticAccountKeys[ix.accountKeyIndexes[0]];
+        const winnerPubkey = transaction.message.staticAccountKeys[ix.accountKeyIndexes[2]];
+
+        await db.run(
+          `UPDATE pacts SET status = ? WHERE pubkey = ?`,
+          ['Completed', challengePactPubkey.toBase58()]
+        );
+
+        // Update winner's pacts_won count
+        await db.run(
+          `UPDATE player_profiles SET pacts_won = pacts_won + 1 WHERE pubkey = ?`,
+          [winnerPubkey.toBase58()]
+        );
+
+        // Update losers' pacts_lost count (all participants except winner)
+        const participants = await db.all(
+          `SELECT player_pubkey FROM participants WHERE pact_pubkey = ? AND player_pubkey != ?`,
+          [challengePactPubkey.toBase58(), winnerPubkey.toBase58()]
+        );
+        for (const p of participants) {
+          await db.run(
+            `UPDATE player_profiles SET pacts_lost = pacts_lost + 1 WHERE pubkey = ?`,
+            [p.player_pubkey]
+          );
+        }
+        console.log(`Pact ${challengePactPubkey.toBase58()} ended. Winner: ${winnerPubkey.toBase58()}.`);
+        break;
+      }
+      case 'updatePlayerGoal': {
+        const playerGoalPubkey = transaction.message.staticAccountKeys[ix.accountKeyIndexes[0]];
+        const challengePactPubkey = transaction.message.staticAccountKeys[ix.accountKeyIndexes[1]];
+        const playerPubkey = transaction.message.staticAccountKeys[ix.accountKeyIndexes[3]];
+        const data = decoded.data as UpdatePlayerGoalArgs;
+        const { isEliminated, eliminatedAt } = data;
+
+        await db.run(
+          `UPDATE participants SET is_eliminated = ?, eliminated_at = ? WHERE pact_pubkey = ? AND player_pubkey = ?`,
+          [isEliminated, eliminatedAt ? eliminatedAt.toString() : null, challengePactPubkey.toBase58(), playerPubkey.toBase58()]
+        );
+        console.log(`Player ${playerPubkey.toBase58()} in pact ${challengePactPubkey.toBase58()} updated. Eliminated: ${isEliminated}.`);
+        break;
+      }
+      default:
+        console.log('Unhandled instruction:', decoded.name);
+    }
+  }
+}
+
+
 
 

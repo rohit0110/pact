@@ -37,6 +37,20 @@ export const fetchPacts = async (pubkey: string) => {
   }
 };
 
+export const fetchSpecificPact = async (pubkey: string) => {
+  try {
+    const response = await fetch(`${BASE_URL}/api/pacts/${pubkey}`);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    return data;
+  } catch (e) {
+    console.error("Failed to fetch pact:", e);
+    throw e;
+  }
+};
+
 export const createPlayerProfile = async (userPublicKey: PublicKey, name: string, provider: any) => {
   try {
     console.log(`Creating profile for public key: ${userPublicKey.toBase58()}`);
@@ -118,7 +132,7 @@ export const createPact = async (pactData: {
         [Buffer.from("player_profile"), userPublicKey.toBuffer()],
         program.programId
     );
-
+    
     const [challengePactPDA] = PublicKey.findProgramAddressSync(
         [Buffer.from("challenge_pact"), Buffer.from(pactData.name), userPublicKey.toBuffer()],
         program.programId
@@ -133,7 +147,7 @@ export const createPact = async (pactData: {
         [Buffer.from("pact_vault"), challengePactPDA.toBuffer()],
         program.programId
     );
-
+    
     const instruction = await program.methods
       .initializeChallengePact(
         pactData.name,
@@ -154,7 +168,6 @@ export const createPact = async (pactData: {
         systemProgram: SystemProgram.programId,
       })
       .instruction();
-
     const { blockhash } = await connection.getLatestBlockhash();
     const message = new TransactionMessage({
       payerKey: new PublicKey(BACKEND_FEE_PAYER_ADDRESS),
@@ -197,7 +210,76 @@ export const createPact = async (pactData: {
   }
 };
 
-export const stakeInPact = async (pactPubkey: PublicKey, userPublicKey: PublicKey, provider: any, amount: number) => {
+export const joinChallengePact = async (pactPubkey: PublicKey, userPublicKey: PublicKey, provider: any) => {
+  try {
+    const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
+    const program = getPactProgram(connection, provider);
+
+    const [playerProfilePDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("player_profile"), userPublicKey.toBuffer()],
+      program.programId
+    );
+
+    const [playerGoalPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("player_pact_profile"), userPublicKey.toBuffer(), pactPubkey.toBuffer()],
+      program.programId
+    );
+
+    const instruction = await program.methods
+      .joinChallengePact()
+      .accounts({
+        challengePact: pactPubkey,
+        playerGoal: playerGoalPDA,
+        appVault: new PublicKey(BACKEND_FEE_PAYER_ADDRESS),
+        playerProfile: playerProfilePDA,
+        player: userPublicKey,
+        systemProgram: SystemProgram.programId,
+      })
+      .instruction();
+
+    const { blockhash } = await connection.getLatestBlockhash();
+    const message = new TransactionMessage({
+      payerKey: new PublicKey(BACKEND_FEE_PAYER_ADDRESS),
+      recentBlockhash: blockhash,
+      instructions: [instruction],
+    }).compileToV0Message();
+
+    const transaction = new VersionedTransaction(message);
+    const serializedMessage = Buffer.from(transaction.message.serialize()).toString('base64');
+
+    const { signature: serializedUserSignature } = await provider.request({
+        method: 'signMessage',
+        params: { message: serializedMessage, display: 'utf8' },
+    });
+
+    const userSignature = Buffer.from(serializedUserSignature, 'base64');
+    transaction.addSignature(userPublicKey, userSignature);
+
+    const serializedTransaction = Buffer.from(transaction.serialize()).toString('base64');
+
+    const response = await fetch(`${BASE_URL}/api/relay-transaction`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ transaction: serializedTransaction }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`HTTP error! status: ${response.status}, message: ${errorData.error || 'Unknown error'}`);
+    }
+
+    const data = await response.json();
+    console.log('Join pact transaction sent:', data);
+    return data;
+  } catch (e) {
+    console.error("Failed to join pact:", e);
+    throw e;
+  }
+};
+
+export const stakeInPact = async (pactPubkey: PublicKey, userPublicKey: PublicKey, provider: any, amount: number) => {""
   try {
     const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
     const program = getPactProgram(connection, provider);
