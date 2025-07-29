@@ -30,7 +30,8 @@ export async function openDb(): Promise<Database> {
       status TEXT NOT NULL,
       stake_amount INTEGER,
       prize_pool INTEGER,
-      created_at INTEGER
+      created_at INTEGER,
+      code TEXT UNIQUE
     );
 
     CREATE TABLE IF NOT EXISTS player_profiles (

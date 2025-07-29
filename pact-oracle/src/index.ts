@@ -270,6 +270,41 @@ app.get('/api/pacts/:pubkey', async (req, res) => {
   }
 });
 
+app.get('/api/pacts/code/:code', async (req, res) => {
+  try {
+    const { code } = req.params;
+    if (!code) {
+      return res.status(400).json({ error: 'Code not provided.' });
+    }
+
+    const db = await openDb();
+
+    // Fetch the pact
+    const pact = await db.get('SELECT * FROM pacts WHERE code = ?', [code]);
+    if (!pact) {
+      return res.status(404).json({ error: 'Pact not found.' });
+    }
+
+    // Fetch all participants for this pact
+    const participants = await db.all(
+      `
+      SELECT player_pubkey AS pubkey, has_staked, is_eliminated
+      FROM participants
+      WHERE pact_pubkey = ?
+      `,
+      [pact.pubkey]
+    );
+
+    res.status(200).json({
+      ...pact,
+      participants,
+    });
+  } catch (error) {
+    console.error(`Error in /api/pacts/code/${req.params.code}:`, error);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
 
 /**
  * API endpoint to get a player's profile.
@@ -394,6 +429,28 @@ const relayLimiter = rateLimit({
 app.use('/api/relay-transaction', relayLimiter);
 
 // HELPER FUNCTIONS
+function generateRandomCode(length: number): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
+async function generateUniqueCode(db: any): Promise<string> {
+  let code;
+  let isUnique = false;
+  while (!isUnique) {
+    code = generateRandomCode(6);
+    const existing = await db.get('SELECT 1 FROM pacts WHERE code = ?', [code]);
+    if (!existing) {
+      isUnique = true;
+    }
+  }
+  return code as string;
+}
+
 function getAnchorDiscriminator(name: string): Buffer {
   const preimage = `global:${name}`;
   return crypto.createHash('sha256').update(preimage).digest().subarray(0, 8);
@@ -486,9 +543,10 @@ async function updateDatabaseFromTransaction(
         const { name, description, stake, goalType, goalValue, verificationType, comparisonOperator } = data;
         const createdAt = Date.now(); // Use current timestamp for creation
         const status = 'Initialized'; // Initial status
-
+        const code = await generateUniqueCode(db);
+        console.log("THE CODE IS: ", code);
         await db.run(
-          `INSERT OR IGNORE INTO pacts (pubkey, name, description, creator, status, stake_amount, prize_pool, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT OR IGNORE INTO pacts (pubkey, name, description, creator, status, stake_amount, prize_pool, created_at, code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             challengePactPubkey.toBase58(),
             name,
@@ -498,6 +556,7 @@ async function updateDatabaseFromTransaction(
             stake.toString(), // Convert BN to string
             0, // Prize pool is 0 initially, updated on stake
             createdAt,
+            code,
           ]
         );
 
