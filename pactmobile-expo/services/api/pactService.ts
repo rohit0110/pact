@@ -37,20 +37,6 @@ export const fetchPacts = async (pubkey: string) => {
   }
 };
 
-// export const fetchSpecificPact = async (pubkey: string) => {
-//   try {
-//     const response = await fetch(`${BASE_URL}/api/pacts/${pubkey}`);
-//     if (!response.ok) {
-//       throw new Error(`HTTP error! status: ${response.status}`);
-//     }
-//     const data = await response.json();
-//     return data;
-//   } catch (e) {
-//     console.error("Failed to fetch pact:", e);
-//     throw e;
-//   }
-// };
-
 export const fetchPactViaJoinCode = async (joinCode: string) => {
   try {
     const response = await fetch(`${BASE_URL}/api/pacts/code/${joinCode}`);
@@ -65,7 +51,7 @@ export const fetchPactViaJoinCode = async (joinCode: string) => {
   }
 };
 
-export const createPlayerProfile = async (userPublicKey: PublicKey, name: string, provider: any) => {
+export const createPlayerProfile = async (userPublicKey: PublicKey, name: string, githubUsername: string, provider: any) => {
   try {
     console.log(`Creating profile for public key: ${userPublicKey.toBase58()}`);
     const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
@@ -111,7 +97,12 @@ export const createPlayerProfile = async (userPublicKey: PublicKey, name: string
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ transaction: serializedTransaction }),
+      body: JSON.stringify({ 
+        transaction: serializedTransaction, 
+        extra: {
+          github_username: githubUsername,
+        },
+      }),
     });
 
     if (!response.ok) {

@@ -11,6 +11,7 @@ import { PublicKey } from '@solana/web3.js';
 export default function CreateProfileScreen() {
   const { wallets } = useEmbeddedSolanaWallet();
   const [name, setName] = useState('');
+  const [githubUsername, setGithubUsername] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleCreateProfile = async () => {
@@ -24,11 +25,16 @@ export default function CreateProfileScreen() {
       return;
     }
 
+    if(!githubUsername.trim()) {
+      Alert.alert('Missing Information', 'Please enter your GitHub username.');
+      return;
+    }
+
     setLoading(true);
     try {
       const userPublicKey = new PublicKey(wallets[0].address);
       const provider = await wallets[0].getProvider();
-      await createPlayerProfile(userPublicKey, name, provider); 
+      await createPlayerProfile(userPublicKey, name, githubUsername, provider); 
       Alert.alert('Success', 'Profile created successfully!');
       router.replace('/(tabs)'); // Redirect to home screen
     } catch (error) {
@@ -48,6 +54,13 @@ export default function CreateProfileScreen() {
         placeholderTextColor={Colors.dark.icon}
         value={name}
         onChangeText={setName}
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Enter your GitHub username"
+        placeholderTextColor={Colors.dark.icon}
+        value={githubUsername} // Assuming you want to use the same input for GitHub username
+        onChangeText={setGithubUsername}
       />
       <Button
         title={loading ? "Creating..." : "Create Profile"}
