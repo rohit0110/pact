@@ -21,10 +21,10 @@ export async function runIndexer(connection: Connection, program: Program<Pact>)
     console.log('Indexing pacts...');
     const allPacts = await program.account.challengePact.all();
     for (const pact of allPacts) {
-      const { name, description, creator, status, stake, prizePool, createdAt } = pact.account;
+      const { name, description, creator, status, stake, prizePool, goalType, goalValue, createdAt } = pact.account;
       await db.run(
-        `INSERT INTO pacts (pubkey, name, description, creator, status, stake_amount, prize_pool, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `INSERT INTO pacts (pubkey, name, description, creator, status, stake_amount, prize_pool, goal_type, goal_value, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(pubkey) DO UPDATE SET
            name=excluded.name,
            description=excluded.description,
@@ -32,6 +32,8 @@ export async function runIndexer(connection: Connection, program: Program<Pact>)
            status=excluded.status,
            stake_amount=excluded.stake_amount,
            prize_pool=excluded.prize_pool,
+           goal_type=excluded.goal_type,
+           goal_value=excluded.goal_value,
            created_at=excluded.created_at`,
         [
           pact.publicKey.toBase58(),
@@ -41,6 +43,8 @@ export async function runIndexer(connection: Connection, program: Program<Pact>)
           Object.keys(status)[0],
           stake.toNumber(),
           prizePool.toNumber(),
+          Object.keys(goalType)[0],
+          goalValue.toNumber(),
           createdAt.toNumber(),
         ]
       );

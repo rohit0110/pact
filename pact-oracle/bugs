@@ -1,1 +1,1 @@
-[] pacts_won and pacts_lost not getting updated
+Fix issue of double marking as eliminated, add check from DB

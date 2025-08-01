@@ -8,7 +8,7 @@ import { runIndexer } from './indexer';
 import { IDL, Pact } from './idl/idl';
 import { Program, AnchorProvider, Wallet, BorshCoder, Instruction } from '@coral-xyz/anchor';
 import { Buffer } from 'buffer';
-
+import { verifyGithubForPlayer } from './verifiers/github';
 
 dotenv.config();
 const rateLimit = require('express-rate-limit');
@@ -66,13 +66,13 @@ function getAppVaultKeypair(): Keypair {
  * It first updates the local database with the latest on-chain data,
  * then it checks active pacts and updates their status based on real-world data.
  */
+
 async function runOracleAndIndexer() {
   console.log('Running the oracle and indexer check...');
   try {
     const connection = getSolanaConnection();
     const appVaultKeypair = getAppVaultKeypair();
     const wallet = new Wallet(appVaultKeypair);
-    // Create an Anchor provider with the connection and wallet
     const provider = new AnchorProvider(connection, wallet, {
       commitment: 'confirmed',
     });
@@ -84,12 +84,52 @@ async function runOracleAndIndexer() {
     // Step 2: Perform the oracle checks using the now-synced data
     console.log('Starting oracle checks...');
     const db = await openDb();
-    const activePacts = await db.all("SELECT * FROM pacts WHERE status = 'Active'");
-    const completedPacts = await db.all("SELECT * FROM pacts WHERE status = 'completed'");
+    const activePacts = await db.all("SELECT * FROM pacts WHERE status = 'active'");
     console.log(`Found ${activePacts.length} active pacts.`);
-    console.log(`Found ${completedPacts.length} completed pacts.`);
 
-    // TODO: Loop through active pacts and perform oracle logic as before
+    for (const pact of activePacts) {
+      console.log(`Checking pact: ${pact.name}`);
+      console.log(`Pact goal type: ${pact.goal_type}`);
+      if (pact.goal_type === 'dailyGithubContribution') {
+        const participants = await db.all('SELECT * FROM participants WHERE pact_pubkey = ?', [pact.pubkey]);
+        console.log("PEEPOO");
+        for (const participant of participants) {
+          const playerProfile = await db.get('SELECT * FROM player_profiles WHERE pubkey = ?', [participant.player_pubkey]);
+          console.log("INSIDE HERE");
+          if (playerProfile && playerProfile.github_username) {
+            const isVerified = await verifyGithubForPlayer(playerProfile.github_username, pact.goal_value);
+            console.log("SOME ISSE");
+            if (!isVerified) {
+              console.log(`Player ${playerProfile.name} failed the goal for pact ${pact.name}. Updating status...`);
+              const [playerGoalPDA] = PublicKey.findProgramAddressSync(
+                [Buffer.from("player_pact_profile"), new PublicKey(participant.player_pubkey).toBuffer() ,new PublicKey(pact.pubkey).toBuffer()],
+                program.programId
+              );
+
+              const transaction = await program.methods
+                .updatePlayerGoal(true, new BN(Date.now()))
+                .accounts({
+                  playerGoal: playerGoalPDA,
+                  challengePact: new PublicKey(pact.pubkey),
+                  appVault: appVaultKeypair.publicKey,
+                  player: new PublicKey(participant.player_pubkey),
+                  systemProgram: SystemProgram.programId,
+                })
+                .transaction();
+              
+              transaction.feePayer = appVaultKeypair.publicKey;
+              const { blockhash } = await connection.getLatestBlockhash();
+              transaction.recentBlockhash = blockhash;
+
+              transaction.partialSign(appVaultKeypair);
+              const signature = await connection.sendRawTransaction(transaction.serialize());
+              await connection.confirmTransaction(signature, 'confirmed');
+              console.log(`Player ${playerProfile.name} marked as eliminated. Signature: ${signature}`);
+            }
+          }
+        }
+      }
+    }
 
     console.log('Oracle and indexer check completed successfully.');
   } catch (error) {
@@ -107,66 +147,7 @@ app.get('/', (req, res) => {
   res.send('Pact Oracle and Indexer Service is running!');
 });
 
-/**
- * API endpoint to create a new player profile.
- * This endpoint is used to initialize a player's profile in the database.
- */
-app.post('/api/players', async (req, res) => {
-  try {
-    const { pubkey, name } = req.body;
-    if (!pubkey || !name) {
-      return res.status(400).json({ error: 'Public key and name are required.' });
-    }
 
-    const connection = getSolanaConnection();
-    const appVaultKeypair = getAppVaultKeypair();
-    const playerPubkey = new PublicKey(pubkey);
-
-    const provider = new AnchorProvider(connection, new Wallet(appVaultKeypair), {});
-    const program = new Program<Pact>(IDL, process.env.PROGRAM_ID!, provider);
-
-    // Derive PDA
-    const [playerProfilePDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("player_profile"), playerPubkey.toBuffer()],
-      program.programId
-    );
-
-    // Optional: skip if already exists
-    const existing = await connection.getAccountInfo(playerProfilePDA);
-    if (existing) {
-      return res.status(409).json({ error: 'Player profile already exists.' });
-    }
-
-    // Build transaction
-    const transaction = await program.methods
-      .initializePlayerProfile(name)
-      .accounts({
-        playerProfile: playerProfilePDA,
-        appVault: appVaultKeypair.publicKey,
-        player: playerPubkey,
-        systemProgram: SystemProgram.programId,
-      })
-      .transaction();
-
-    transaction.feePayer = appVaultKeypair.publicKey;
-    const { blockhash } = await connection.getLatestBlockhash();
-    transaction.recentBlockhash = blockhash;
-
-    // Sign and send
-    transaction.partialSign(appVaultKeypair);
-    const signature = await connection.sendRawTransaction(transaction.serialize());
-    await connection.confirmTransaction(signature, 'confirmed');
-
-    res.status(200).json({
-      signature,
-      message: 'Player profile created successfully.',
-    });
-
-  } catch (error) {
-    console.error('Error creating player profile transaction:', error);
-    res.status(500).json({ error: 'Internal server error.' });
-  }
-});
 
 
 /**
@@ -333,8 +314,7 @@ app.get('/api/players/:pubkey', async (req, res) => {
 
 app.post('/api/relay-transaction', async (req, res) => {
   try {
-    console.log("REACHED");
-    const { transaction: base64Transaction } = req.body;
+    const { transaction: base64Transaction, extra } = req.body as { transaction: string; extra?: { [key: string]: any } };
 
     if (!base64Transaction) {
       return res.status(400).json({ error: 'Transaction not provided.' });
@@ -379,7 +359,7 @@ app.post('/api/relay-transaction', async (req, res) => {
     await connection.confirmTransaction(signature, 'confirmed');
 
     // 6. Update database now that transaction is confirmed
-    await updateDatabaseFromTransaction(program, transaction);
+    await updateDatabaseFromTransaction(program, transaction, extra);
     console.log('✅ Relayed tx with signature:', signature);
     res.status(200).json({ signature });
 
@@ -416,8 +396,7 @@ app.listen(port, async () => {
   console.log(`Server is listening on port ${port}`);
   await runOracleAndIndexer(); // run once immediately
 
-  // Schedule the oracle to run every 10 minutes.
-  cron.schedule('*/10 * * * *', runOracleAndIndexer);
+  cron.schedule('* * * * *', runOracleAndIndexer);
 });
 
 // RATE LIMIT HELPER
@@ -499,7 +478,8 @@ export type UpdatePlayerGoalArgs = {
 
 async function updateDatabaseFromTransaction(
   program: Program<Pact>,
-  transaction: VersionedTransaction
+  transaction: VersionedTransaction,
+  extra?: { [key: string]: any }
 ) {
   const coder = new BorshCoder(program.idl);
 
@@ -526,14 +506,18 @@ async function updateDatabaseFromTransaction(
 
     switch (decoded.name) {
       case 'initializePlayerProfile': {
-        const playerProfilePubkey = transaction.message.staticAccountKeys[ix.accountKeyIndexes[0]];
+        const playerPubkey = transaction.message.staticAccountKeys[ix.accountKeyIndexes[2]];
         const data = decoded.data as InitializePlayerProfileArgs;
         const playerName = data.name;
+        const playerGithubUsername = extra?.github_username;
+        console.log("USERNAME IS: ", playerGithubUsername);
         await db.run(
-          'INSERT OR IGNORE INTO player_profiles (pubkey, name) VALUES (?, ?)',
-          [playerProfilePubkey.toBase58(), playerName]
+          `INSERT INTO player_profiles (pubkey, name, github_username) VALUES (?, ?, ?)
+           ON CONFLICT(pubkey) DO UPDATE SET name = excluded.name`,
+          [playerPubkey.toBase58(), playerName, playerGithubUsername]
         );
-        console.log(`Player profile ${playerName} (${playerProfilePubkey.toBase58()}) initialized.`);
+        
+        console.log(`Player profile ${playerName} (${playerPubkey.toBase58()}) handled.`);
         break;
       }
       case 'initializeChallengePact': {
@@ -546,15 +530,17 @@ async function updateDatabaseFromTransaction(
         const code = await generateUniqueCode(db);
         console.log("THE CODE IS: ", code);
         await db.run(
-          `INSERT OR IGNORE INTO pacts (pubkey, name, description, creator, status, stake_amount, prize_pool, created_at, code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT OR IGNORE INTO pacts (pubkey, name, description, creator, status, stake_amount, prize_pool, goal_type, goal_value, created_at, code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             challengePactPubkey.toBase58(),
             name,
             description,
             creatorPubkey.toBase58(),
             status,
-            stake.toString(), // Convert BN to string
-            0, // Prize pool is 0 initially, updated on stake
+            stake.toString(), 
+            0,
+            goalType,
+            goalValue.toString(), 
             createdAt,
             code,
           ]

@@ -30,6 +30,8 @@ export async function openDb(): Promise<Database> {
       status TEXT NOT NULL,
       stake_amount INTEGER,
       prize_pool INTEGER,
+      goal_type TEXT NOT NULL,
+      goal_value INTEGER,
       created_at INTEGER,
       code TEXT UNIQUE
     );
@@ -38,6 +40,7 @@ export async function openDb(): Promise<Database> {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       pubkey TEXT UNIQUE NOT NULL,
       name TEXT,
+      github_username TEXT UNIQUE,
       pacts_won INTEGER DEFAULT 0,
       pacts_lost INTEGER DEFAULT 0
     );
