@@ -27,7 +27,7 @@ const goalTypes = [
 
 const verificationTypes = [
   { label: 'Screen Time', value: { screenTime: {} } },
-  { label: 'GitHub API', value: { gitHubAPI: {} } },
+  { label: 'Github API', value: { gitHubApi: {} } },
   { label: 'LeetCode Scrape', value: { leetCodeScrape: {} } },
   { label: 'Strava', value: { strava: {} } },
 ];
