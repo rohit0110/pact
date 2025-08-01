@@ -8,7 +8,7 @@ import { runIndexer } from './indexer';
 import { IDL, Pact } from './idl/idl';
 import { Program, AnchorProvider, Wallet, BorshCoder, Instruction } from '@coral-xyz/anchor';
 import { Buffer } from 'buffer';
-import { verifyGithubForPlayer } from './verifiers/github';
+import { runHourlyCheck, runEndOfDayCheck, runIndexerAndShit } from './oracle';
 
 dotenv.config();
 const rateLimit = require('express-rate-limit');
@@ -58,85 +58,6 @@ function getAppVaultKeypair(): Keypair {
   }
   return loadKeypairFromPrivateKey(privateKey);
 }
-
-
-// --- Oracle & Indexer Logic ---
-/**
- * The main function for the oracle's cron job.
- * It first updates the local database with the latest on-chain data,
- * then it checks active pacts and updates their status based on real-world data.
- */
-
-async function runOracleAndIndexer() {
-  console.log('Running the oracle and indexer check...');
-  try {
-    const connection = getSolanaConnection();
-    const appVaultKeypair = getAppVaultKeypair();
-    const wallet = new Wallet(appVaultKeypair);
-    const provider = new AnchorProvider(connection, wallet, {
-      commitment: 'confirmed',
-    });
-    const program = new Program<Pact>(IDL, process.env.PROGRAM_ID!, provider);
-
-    // Step 1: Run the indexer to sync on-chain data to the local DB
-    await runIndexer(connection, program);
-
-    // Step 2: Perform the oracle checks using the now-synced data
-    console.log('Starting oracle checks...');
-    const db = await openDb();
-    const activePacts = await db.all("SELECT * FROM pacts WHERE status = 'active'");
-    console.log(`Found ${activePacts.length} active pacts.`);
-
-    for (const pact of activePacts) {
-      console.log(`Checking pact: ${pact.name}`);
-      console.log(`Pact goal type: ${pact.goal_type}`);
-      if (pact.goal_type === 'dailyGithubContribution') {
-        const participants = await db.all('SELECT * FROM participants WHERE pact_pubkey = ?', [pact.pubkey]);
-        console.log("PEEPOO");
-        for (const participant of participants) {
-          const playerProfile = await db.get('SELECT * FROM player_profiles WHERE pubkey = ?', [participant.player_pubkey]);
-          console.log("INSIDE HERE");
-          if (playerProfile && playerProfile.github_username) {
-            const isVerified = await verifyGithubForPlayer(playerProfile.github_username, pact.goal_value);
-            console.log("SOME ISSE");
-            if (!isVerified) {
-              console.log(`Player ${playerProfile.name} failed the goal for pact ${pact.name}. Updating status...`);
-              const [playerGoalPDA] = PublicKey.findProgramAddressSync(
-                [Buffer.from("player_pact_profile"), new PublicKey(participant.player_pubkey).toBuffer() ,new PublicKey(pact.pubkey).toBuffer()],
-                program.programId
-              );
-
-              const transaction = await program.methods
-                .updatePlayerGoal(true, new BN(Date.now()))
-                .accounts({
-                  playerGoal: playerGoalPDA,
-                  challengePact: new PublicKey(pact.pubkey),
-                  appVault: appVaultKeypair.publicKey,
-                  player: new PublicKey(participant.player_pubkey),
-                  systemProgram: SystemProgram.programId,
-                })
-                .transaction();
-              
-              transaction.feePayer = appVaultKeypair.publicKey;
-              const { blockhash } = await connection.getLatestBlockhash();
-              transaction.recentBlockhash = blockhash;
-
-              transaction.partialSign(appVaultKeypair);
-              const signature = await connection.sendRawTransaction(transaction.serialize());
-              await connection.confirmTransaction(signature, 'confirmed');
-              console.log(`Player ${playerProfile.name} marked as eliminated. Signature: ${signature}`);
-            }
-          }
-        }
-      }
-    }
-
-    console.log('Oracle and indexer check completed successfully.');
-  } catch (error) {
-    console.error('Error during oracle and indexer check:', error);
-  }
-}
-
 // --- Express Server Setup ---
 
 const app = express();
@@ -394,9 +315,13 @@ app.listen(port, async () => {
   // Open the database connection when the server starts
   await openDb(); 
   console.log(`Server is listening on port ${port}`);
-  await runOracleAndIndexer(); // run once immediately
+  cron.schedule('0 * * * *', runIndexerAndShit);
 
-  cron.schedule('* * * * *', runOracleAndIndexer);
+  // Schedule the hourly check 0
+  cron.schedule('0 * * * *', runHourlyCheck);
+
+  // Schedule the end-of-day pact check 0 0
+  cron.schedule('0 0 * * *', runEndOfDayCheck);
 });
 
 // RATE LIMIT HELPER
