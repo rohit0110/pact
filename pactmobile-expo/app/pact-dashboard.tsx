@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, ScrollView, TouchableOpacity, Clipboard, Alert, Dimensions, Share } from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity, Clipboard, Alert, Dimensions } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { DesignSystem } from '@/constants/DesignSystem';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,7 +8,7 @@ import { useEmbeddedSolanaWallet } from '@privy-io/expo';
 import { stakeInPact, startChallengePact, fetchPactByPubkey, fetchPlayerProfile } from '@/services/api/pactService';
 import { PublicKey } from '@solana/web3.js';
 import { LinearGradient } from 'expo-linear-gradient';
-import PieChart from '@/components/PieChart';
+import AnimatedPieChart from '@/components/PieChart';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { BlurView } from 'expo-blur';
 
@@ -208,10 +208,10 @@ export default function PactDashboardPage() {
             </View>
 
             <View style={styles.chartContainer}>
-              <PieChart active={activeParticipants.length} total={participants.length}>
+              <AnimatedPieChart active={activeParticipants.length} total={participants.length}>
                 <ThemedText style={styles.chartLabel}>{`${activeParticipants.length} Active`}</ThemedText>
                 <ThemedText style={styles.chartSubLabel}>{`/ ${participants.length} Total`}</ThemedText>
-              </PieChart>
+              </AnimatedPieChart>
             </View>
 
             <View style={styles.participantsListContainer}>

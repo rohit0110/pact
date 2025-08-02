@@ -1,63 +1,36 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import { DesignSystem } from '@/constants/DesignSystem';
+import { View, Text } from 'react-native';
+import { AnimatedCircularProgress } from 'react-native-circular-progress';
 
-interface PieChartProps {
-  active: number;
-  total: number;
-  children?: React.ReactNode;
-}
-
-const PieChart: React.FC<PieChartProps> = ({ active, total, children }) => {
+export default function AnimatedPieChart({ active, total }: { active: number, total: number }) {
   const percentage = total > 0 ? (active / total) * 100 : 0;
-  const rotation = percentage > 50 ? 180 : (percentage / 100) * 360;
 
   return (
-    <View style={styles.container}>
-      <View style={styles.outerCircle}>
-        <View style={[styles.slice, { transform: [{ rotate: `${rotation}deg` }] }]} />
-        {percentage > 50 && <View style={styles.slice} />}
-        <View style={styles.innerCircle}>
-          {children}
-        </View>
-      </View>
+    <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+      <AnimatedCircularProgress
+        size={150}
+        width={12}
+        fill={percentage}
+        tintColor="#00B49F" // Active color
+        backgroundColor="rgba(255, 0, 0, 0.2)" // Inactive background
+        duration={800}
+        rotation={0}
+        lineCap="round"
+      >
+        {
+          () => (
+            <View>
+              {/* Replace this with styled text if needed */}
+              <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 16 }}>
+                {active} Active
+              </Text>
+              <Text style={{ color: '#8DFFF0', fontSize: 12 }}>
+                / {total} Total
+              </Text>
+            </View>
+          )
+        }
+      </AnimatedCircularProgress>
     </View>
   );
-};
-
-const styles = StyleSheet.create({
-  container: {
-    width: 150,
-    height: 150,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  outerCircle: {
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    backgroundColor: 'rgba(255, 0, 0, 0.2)', // Light red for the inactive part
-    justifyContent: 'center',
-    alignItems: 'center',
-    overflow: 'hidden',
-  },
-  slice: {
-    position: 'absolute',
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    backgroundColor: DesignSystem.colors.neonMint, // Mint green for the active part
-  },
-  innerCircle: {
-    position: 'absolute',
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: DesignSystem.colors.slateGreyBlue,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: DesignSystem.spacing.sm,
-  },
-});
-
-export default PieChart;
+}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, TouchableOpacity, TextInput, ActivityIndicator, ScrollView, Dimensions, Alert, Share, Clipboard } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, TextInput, ActivityIndicator, ScrollView, Dimensions, Alert, Clipboard } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { DesignSystem } from '@/constants/DesignSystem';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,7 +9,7 @@ import { fetchPactViaJoinCode, joinPact, fetchPlayerProfile } from '../services/
 import { PublicKey } from '@solana/web3.js';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-import PieChart from '@/components/PieChart';
+import AnimatedPieChart from '@/components/PieChart';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 
 const { height: screenHeight } = Dimensions.get('window');
@@ -106,10 +106,13 @@ export default function JoinPactPage() {
         </View>
 
         <View style={styles.chartContainer}>
-          <PieChart active={activeParticipants.length} total={participants.length}>
-            <ThemedText style={styles.chartLabel}>{`${activeParticipants.length} Active`}</ThemedText>
-            <ThemedText style={styles.chartSubLabel}>{`/ ${participants.length} Total`}</ThemedText>
-          </PieChart>
+          <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+            <AnimatedPieChart active={activeParticipants.length} total={participants.length} />
+            <View style={{ position: 'absolute', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
+              <ThemedText style={styles.chartLabel}>{`${activeParticipants.length} Active`}</ThemedText>
+              <ThemedText style={styles.chartSubLabel}>{`/ ${participants.length} Total`}</ThemedText>
+            </View>
+          </View>
         </View>
 
         <View style={styles.participantsListContainer}>
