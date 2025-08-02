@@ -36,7 +36,7 @@ export default function CreateProfileScreen() {
       const provider = await wallets[0].getProvider();
       await createPlayerProfile(userPublicKey, name, githubUsername, provider); 
       Alert.alert('Success', 'Profile created successfully!');
-      router.replace('/(tabs)/temp'); // Redirect to home screen
+      router.replace('/(tabs)/profile'); // Redirect to home screen
     } catch (error) {
       console.error('Failed to create profile:', error);
       Alert.alert('Error', 'Failed to create profile. Please try again.');

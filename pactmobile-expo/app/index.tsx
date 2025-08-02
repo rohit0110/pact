@@ -37,7 +37,7 @@ export default function LoginScreen() {
         const playerPubkey = wallets[0].address;
         await fetchPlayerProfile(playerPubkey);
         console.log(playerPubkey);
-        router.replace('/(tabs)/temp');
+        router.replace('/(tabs)/profile');
       } catch (error) {
         router.replace('/create-profile');
       } finally {

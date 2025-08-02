@@ -8,7 +8,6 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
-  console.log("(TABS)/LAYOUT");
   return (
     <Tabs
       screenOptions={{
@@ -20,13 +19,6 @@ export default function TabLayout() {
           borderTopColor: Colors.palette.darkBlue,
         },
       }}>
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
-        }}
-      />
       <Tabs.Screen
         name="pact"
         options={{

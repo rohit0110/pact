@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'expo-router';
 import { StyleSheet, View, ScrollView, TouchableOpacity, Clipboard, Alert } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -83,8 +82,8 @@ export default function PactDashboardPage() {
   };
 
   const handleCopyJoinCode = () => {
-    if (currentPact.join_code) {
-      Clipboard.setString(currentPact.join_code);
+    if (currentPact.code) {
+      Clipboard.setString(currentPact.code);
       Alert.alert('Copied', 'Pact join code copied to clipboard!');
     }
   };
@@ -109,10 +108,10 @@ export default function PactDashboardPage() {
           <ThemedText style={styles.detail}>Status: {currentPact.status}</ThemedText>
           <ThemedText style={styles.detail}>Stake: ${currentPact.stake_amount}</ThemedText>
           <ThemedText style={styles.detail}>Prize Pool: ${currentPact.prize_pool}</ThemedText>
-          {currentPact.join_code && (
+          {currentPact.code && (
             <TouchableOpacity onPress={handleCopyJoinCode} style={styles.joinCodeContainer}>
               <ThemedText style={styles.detail}>
-                Join Code: {currentPact.join_code}
+                Join Code: {currentPact.code}
               </ThemedText>
               <ThemedText style={styles.copyText}>(tap to copy)</ThemedText>
             </TouchableOpacity>
