@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View,
-  Text,
-  Button,
   TextInput,
   StyleSheet,
   ActivityIndicator,
+  TouchableOpacity,
 } from 'react-native';
 import {
   usePrivy,
@@ -15,6 +13,9 @@ import {
 } from '@privy-io/expo';
 import { fetchPlayerProfile } from '@/services/api/pactService';
 import { router } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { DesignSystem } from '@/constants/DesignSystem';
+import { ThemedText } from '@/components/ThemedText';
 
 export default function LoginScreen() {
   const { isReady, user } = usePrivy();
@@ -37,7 +38,7 @@ export default function LoginScreen() {
         const playerPubkey = wallets[0].address;
         await fetchPlayerProfile(playerPubkey);
         console.log(playerPubkey);
-        router.replace('/(tabs)/profile');
+        router.replace('/(tabs)/pact');
       } catch (error) {
         router.replace('/create-profile');
       } finally {
@@ -50,21 +51,20 @@ export default function LoginScreen() {
 
   if (!isReady || profileLoading) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" />
-        <Text style={styles.text}>Initializing...</Text>
-      </View>
+      <LinearGradient colors={DesignSystem.gradients.background} style={styles.centered}>
+        <ActivityIndicator size="large" color={DesignSystem.colors.neonMintVibrant} />
+        <ThemedText style={styles.text}>Initializing...</ThemedText>
+      </LinearGradient>
     );
   }
 
   if (!user) {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.text}>Login</Text>
+      <LinearGradient colors={DesignSystem.gradients.background} style={styles.centered}>
+        <ThemedText type="title" style={styles.title}>Pact</ThemedText>
 
-        {/* Google Login Button */}
-        <Button
-          title="Login with Google"
+        <TouchableOpacity
+          style={styles.button}
           disabled={googleLoading}
           onPress={async () => {
             try {
@@ -76,35 +76,36 @@ export default function LoginScreen() {
               setGoogleLoading(false);
             }
           }}
-        />
+        >
+          <ThemedText style={styles.buttonText}>Login with Google</ThemedText>
+        </TouchableOpacity>
 
-        <Text style={{ marginVertical: 16 }}>OR</Text>
+        <ThemedText style={{ marginVertical: 16, color: DesignSystem.colors.icyAqua }}>OR</ThemedText>
 
-        {/* Email Input */}
         <TextInput
           value={email}
           onChangeText={setEmail}
           placeholder="Enter your email"
+          placeholderTextColor={DesignSystem.colors.icyAqua}
           style={styles.input}
           autoCapitalize="none"
           keyboardType="email-address"
         />
 
-        {/* OTP Input */}
         {codeSent && (
           <TextInput
             value={code}
             onChangeText={setCode}
             placeholder="Enter code"
+            placeholderTextColor={DesignSystem.colors.icyAqua}
             style={styles.input}
             keyboardType="number-pad"
           />
         )}
 
-        {/* OTP Buttons */}
         {!codeSent ? (
-          <Button
-            title="Send Code"
+          <TouchableOpacity
+            style={styles.button}
             disabled={otpLoading}
             onPress={async () => {
               setOtpLoading(true);
@@ -117,10 +118,12 @@ export default function LoginScreen() {
                 setOtpLoading(false);
               }
             }}
-          />
+          >
+            <ThemedText style={styles.buttonText}>Send Code</ThemedText>
+          </TouchableOpacity>
         ) : (
-          <Button
-            title="Login with Code"
+          <TouchableOpacity
+            style={styles.button}
             disabled={otpLoading}
             onPress={async () => {
               setOtpLoading(true);
@@ -132,15 +135,19 @@ export default function LoginScreen() {
                 setOtpLoading(false);
               }
             }}
-          />
+          >
+            <ThemedText style={styles.buttonText}>Login with Code</ThemedText>
+          </TouchableOpacity>
         )}
 
         {(otpLoading || googleLoading) && (
-          <ActivityIndicator size="small" style={{ marginTop: 10 }} />
+          <ActivityIndicator size="small" style={{ marginTop: 10 }} color={DesignSystem.colors.neonMintVibrant} />
         )}
-      </View>
+      </LinearGradient>
     );
   }
+
+  return null; // Or a loading indicator while redirecting
 }
 
 const styles = StyleSheet.create({
@@ -150,17 +157,38 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
   },
+  title: {
+    marginBottom: DesignSystem.spacing.xl,
+    color: DesignSystem.colors.white,
+  },
   input: {
     width: '100%',
-    padding: 12,
+    padding: DesignSystem.spacing.md,
     borderWidth: 1,
-    borderColor: '#ccc',
-    marginVertical: 10,
-    borderRadius: 6,
+    borderColor: 'rgba(141, 255, 240, 0.2)',
+    backgroundColor: 'rgba(197, 255, 248, 0.1)',
+    borderRadius: DesignSystem.borderRadius.md,
+    marginVertical: DesignSystem.spacing.sm,
+    color: DesignSystem.colors.white,
+    fontSize: 16,
+  },
+  button: {
+    width: '100%',
+    padding: DesignSystem.spacing.md,
+    backgroundColor: DesignSystem.colors.neonMint,
+    borderRadius: DesignSystem.borderRadius.md,
+    alignItems: 'center',
+    marginVertical: DesignSystem.spacing.sm,
+  },
+  buttonText: {
+    color: DesignSystem.colors.charcoalBlack,
+    fontWeight: 'bold',
+    fontSize: 16,
   },
   text: {
     fontSize: 18,
     marginVertical: 12,
     textAlign: 'center',
+    color: DesignSystem.colors.icyAquaLight,
   },
 });

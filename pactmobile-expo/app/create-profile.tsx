@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { TextInput, Button, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { useEmbeddedSolanaWallet } from '@privy-io/expo';
 import { createPlayerProfile } from '@/services/api/pactService';
 import { router } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { Colors } from '@/constants/Colors';
+import { DesignSystem } from '@/constants/DesignSystem';
 import { PublicKey } from '@solana/web3.js';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function CreateProfileScreen() {
   const { wallets } = useEmbeddedSolanaWallet();
@@ -46,30 +46,31 @@ export default function CreateProfileScreen() {
   };
 
   return (
-    <ThemedView style={styles.container}>
+    <LinearGradient colors={DesignSystem.gradients.background} style={styles.container}>
       <ThemedText type="title" style={styles.title}>Create Your Player Profile</ThemedText>
       <TextInput
         style={styles.input}
         placeholder="Enter your name"
-        placeholderTextColor={Colors.dark.icon}
+        placeholderTextColor={DesignSystem.colors.icyAqua}
         value={name}
         onChangeText={setName}
       />
       <TextInput
         style={styles.input}
         placeholder="Enter your GitHub username"
-        placeholderTextColor={Colors.dark.icon}
-        value={githubUsername} // Assuming you want to use the same input for GitHub username
+        placeholderTextColor={DesignSystem.colors.icyAqua}
+        value={githubUsername}
         onChangeText={setGithubUsername}
       />
-      <Button
-        title={loading ? "Creating..." : "Create Profile"}
+      <TouchableOpacity
+        style={styles.button}
         onPress={handleCreateProfile}
-        color={Colors.dark.tint}
         disabled={loading}
-      />
-      {loading && <ActivityIndicator style={{ marginTop: 10 }} />}
-    </ThemedView>
+      >
+        <ThemedText style={styles.buttonText}>{loading ? "Creating..." : "Create Profile"}</ThemedText>
+      </TouchableOpacity>
+      {loading && <ActivityIndicator style={{ marginTop: 10 }} color={DesignSystem.colors.neonMintVibrant} />}
+    </LinearGradient>
   );
 }
 
@@ -81,15 +82,31 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   title: {
-    marginBottom: 20,
+    marginBottom: DesignSystem.spacing.lg,
+    color: DesignSystem.colors.white,
   },
   input: {
     width: '100%',
-    padding: 12,
+    padding: DesignSystem.spacing.md,
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    marginBottom: 20,
-    color: Colors.dark.text,
+    borderColor: 'rgba(141, 255, 240, 0.2)',
+    backgroundColor: 'rgba(197, 255, 248, 0.1)',
+    borderRadius: DesignSystem.borderRadius.md,
+    marginVertical: DesignSystem.spacing.sm,
+    color: DesignSystem.colors.white,
+    fontSize: 16,
+  },
+  button: {
+    width: '100%',
+    padding: DesignSystem.spacing.md,
+    backgroundColor: DesignSystem.colors.neonMint,
+    borderRadius: DesignSystem.borderRadius.md,
+    alignItems: 'center',
+    marginVertical: DesignSystem.spacing.sm,
+  },
+  buttonText: {
+    color: DesignSystem.colors.charcoalBlack,
+    fontWeight: 'bold',
+    fontSize: 16,
   },
 });

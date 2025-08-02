@@ -4,12 +4,12 @@ import { StyleSheet, View, FlatList, TouchableOpacity, ActivityIndicator, Refres
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { Colors } from '@/constants/Colors';
+import { DesignSystem } from '@/constants/DesignSystem';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { IconSymbol } from '@/components/ui/IconSymbol';
 import { useEmbeddedSolanaWallet } from '@privy-io/expo';
 import { PublicKey } from '@solana/web3.js';
 import { fetchPacts } from '../../services/api/pactService';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function PactPage() {
   const router = useRouter();
@@ -105,22 +105,26 @@ export default function PactPage() {
 
   if (loading && !refreshing) {
     return (
-      <ThemedView style={[styles.container, { paddingTop: insets.top, justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={Colors.dark.tint} />
-      </ThemedView>
+      <LinearGradient colors={DesignSystem.gradients.background} style={styles.container}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={DesignSystem.colors.neonMintVibrant} />
+        </View>
+      </LinearGradient>
     );
   }
 
   if (error) {
     return (
-      <ThemedView style={[styles.container, { paddingTop: insets.top, justifyContent: 'center', alignItems: 'center' }]}>
-        <ThemedText>Error: {error.message}</ThemedText>
-      </ThemedView>
+      <LinearGradient colors={DesignSystem.gradients.background} style={styles.container}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: DesignSystem.spacing.md }}>
+          <ThemedText>Error: {error.message}</ThemedText>
+        </View>
+      </LinearGradient>
     );
   }
 
   return (
-    <ThemedView style={[styles.container, { paddingTop: insets.top }]}>
+    <LinearGradient colors={DesignSystem.gradients.background} style={[styles.container, { paddingTop: insets.top }]}>
       <FlatList
         data={pacts}
         renderItem={renderItem}
@@ -129,16 +133,14 @@ export default function PactPage() {
           <View style={styles.header}>
             <ThemedText type="title">Your Pacts</ThemedText>
             <TouchableOpacity style={styles.joinButton} onPress={() => router.push('/join-pact')}>
-              <ThemedText style={styles.joinButtonText}>Join Pact Via Code</ThemedText>
+              <ThemedText style={styles.joinButtonText}>Join Pact</ThemedText>
             </TouchableOpacity>
           </View>
         }
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.dark.tint} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={DesignSystem.colors.neonMintVibrant} />}
+        contentContainerStyle={{ paddingBottom: 100 }} // Ensure space for FAB
       />
-      <TouchableOpacity style={styles.fab} onPress={() => router.push('/create-pact')}>
-        <IconSymbol name="plus" size={28} color={Colors.dark.background} />
-      </TouchableOpacity>
-    </ThemedView>
+    </LinearGradient>
   );
 }
 
@@ -147,63 +149,60 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    marginBottom: 16,
-    paddingTop: 16,
-    paddingHorizontal: 16,
+    marginBottom: DesignSystem.spacing.md,
+    paddingTop: DesignSystem.spacing.lg,
+    paddingHorizontal: DesignSystem.spacing.md,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   joinButton: {
-    backgroundColor: Colors.dark.tint,
+    backgroundColor: 'rgba(197, 255, 248, 0.1)',
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: DesignSystem.borderRadius.sm,
+    borderWidth: 1,
+    borderColor: DesignSystem.colors.icyAqua,
   },
   joinButtonText: {
-    color: Colors.dark.background,
+    color: DesignSystem.colors.white,
     fontWeight: 'bold',
   },
   pactContainer: {
-    padding: 16,
-    marginBottom: 16,
-    marginHorizontal: 16,
-    backgroundColor: Colors.palette.darkBlue,
-    borderRadius: 8,
+    padding: DesignSystem.spacing.md,
+    marginBottom: DesignSystem.spacing.md,
+    marginHorizontal: DesignSystem.spacing.md,
+    backgroundColor: 'rgba(197, 255, 248, 0.1)',
+    borderRadius: DesignSystem.borderRadius.lg,
     borderWidth: 1,
-    borderColor: Colors.palette.lightBlue,
+    borderColor: 'rgba(141, 255, 240, 0.2)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
   },
   pactHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: DesignSystem.spacing.sm,
   },
   pactTitle: {
     fontWeight: 'bold',
+    color: DesignSystem.colors.white,
   },
   pactStatus: {
     fontStyle: 'italic',
+    color: DesignSystem.colors.icyAqua,
   },
   pactDescription: {
     fontSize: 14,
-    marginBottom: 8,
+    marginBottom: DesignSystem.spacing.sm,
+    color: DesignSystem.colors.icyAquaLight,
   },
   prizePool: {
     textAlign: 'right',
     fontWeight: 'bold',
-    color: Colors.dark.tint,
-  },
-  fab: {
-    position: 'absolute',
-    width: 56,
-    height: 56,
-    alignItems: 'center',
-    justifyContent: 'center',
-    right: 20,
-    bottom: 20,
-    backgroundColor: Colors.dark.tint,
-    borderRadius: 28,
-    elevation: 8,
+    color: DesignSystem.colors.neonMintVibrant,
   },
 });

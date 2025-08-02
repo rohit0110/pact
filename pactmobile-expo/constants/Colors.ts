@@ -3,34 +3,30 @@
  * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
  */
 
-const tintColorLight = '#14F1B2';
-const tintColorDark = '#14F1B2';
+import { DesignSystem } from './DesignSystem';
+
+const tintColorLight = DesignSystem.colors.neonMint;
+const tintColorDark = DesignSystem.colors.neonMintVibrant;
 
 export const Colors = {
   light: {
-    text: '#0F0F0F',
-    background: '#FFFFFF',
+    text: '#11181C',
+    background: '#fff',
     tint: tintColorLight,
-    icon: '#134156',
-    tabIconDefault: '#134156',
+    icon: '#687076',
+    tabIconDefault: '#687076',
     tabIconSelected: tintColorLight,
   },
   dark: {
-    text: '#FFFFFF',
-    background: '#0F0F0F',
+    text: DesignSystem.colors.icyAquaLight,
+    background: DesignSystem.colors.charcoalBlack,
     tint: tintColorDark,
-    icon: '#8DFFF0',
-    tabIconDefault: '#8DFFF0',
+    icon: DesignSystem.colors.icyAqua,
+    tabIconDefault: DesignSystem.colors.icyAqua,
     tabIconSelected: tintColorDark,
   },
   palette: {
-    black: '#0F0F0F',
-    darkBlue: '#0E151A',
-    blue: '#134156',
-    teal: '#00B49F',
-    lightGreen: '#14F1B2',
-    lightBlue: '#8DFFF0',
-    lightestBlue: '#C5FFF8',
-    white: '#FFFFFF',
-  }
+    darkBlue: '#1a2a3a',
+    lightBlue: '#00B4D8',
+  },
 };

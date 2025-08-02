@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, TouchableOpacity, TextInput, ActivityIndicator, ScrollView } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { Colors } from '@/constants/Colors';
+import { DesignSystem } from '@/constants/DesignSystem';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useEmbeddedSolanaWallet } from '@privy-io/expo';
 import { fetchPactViaJoinCode, joinPact } from '../services/api/pactService';
 import { PublicKey } from '@solana/web3.js';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function JoinPactPage() {
   const insets = useSafeAreaInsets();
@@ -107,7 +107,7 @@ export default function JoinPactPage() {
   };
 
   return (
-    <ThemedView style={[styles.container, { paddingTop: insets.top }]}>
+    <LinearGradient colors={DesignSystem.gradients.background} style={[styles.container, { paddingTop: insets.top }]}>
       {!pact ? (
         <View style={styles.content}>
           <ThemedText type="title">Join a Pact</ThemedText>
@@ -115,12 +115,12 @@ export default function JoinPactPage() {
           <TextInput
             style={styles.input}
             placeholder="Pact Code"
-            placeholderTextColor={Colors.dark.icon}
+            placeholderTextColor={DesignSystem.colors.icyAqua}
             value={pactCode}
             onChangeText={setPactCode}
           />
           {loading ? (
-            <ActivityIndicator size="large" color={Colors.dark.tint} />
+            <ActivityIndicator size="large" color={DesignSystem.colors.neonMintVibrant} />
           ) : (
             <TouchableOpacity style={styles.button} onPress={handleFetchPact}>
               <ThemedText style={styles.buttonText}>Find Pact</ThemedText>
@@ -131,7 +131,7 @@ export default function JoinPactPage() {
       ) : (
         renderPactDetails()
       )}
-    </ThemedView>
+    </LinearGradient>
   );
 }
 
@@ -140,30 +140,31 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     content: {
-        padding: 16,
+        padding: DesignSystem.spacing.md,
     },
     label: {
-        marginTop: 16,
-        marginBottom: 8,
+        marginTop: DesignSystem.spacing.md,
+        marginBottom: DesignSystem.spacing.sm,
+        color: DesignSystem.colors.icyAquaLight,
     },
     input: {
-        backgroundColor: Colors.palette.darkBlue,
-        color: Colors.dark.text,
-        padding: 12,
-        borderRadius: 8,
-        marginBottom: 16,
+        backgroundColor: 'rgba(197, 255, 248, 0.1)',
+        color: DesignSystem.colors.white,
+        padding: DesignSystem.spacing.md,
+        borderRadius: DesignSystem.borderRadius.md,
+        marginBottom: DesignSystem.spacing.md,
         borderWidth: 1,
-        borderColor: Colors.palette.lightBlue,
+        borderColor: 'rgba(141, 255, 240, 0.2)',
     },
     button: {
-        backgroundColor: Colors.dark.tint,
-        padding: 16,
-        borderRadius: 8,
+        backgroundColor: DesignSystem.colors.neonMint,
+        padding: DesignSystem.spacing.md,
+        borderRadius: DesignSystem.borderRadius.md,
         alignItems: 'center',
-        marginTop: 16,
+        marginTop: DesignSystem.spacing.md,
     },
     buttonText: {
-        color: Colors.dark.background,
+        color: DesignSystem.colors.charcoalBlack,
         fontWeight: 'bold',
     },
     errorText: {
@@ -171,46 +172,54 @@ const styles = StyleSheet.create({
         marginTop: 10,
     },
     scrollContent: {
-        padding: 16,
+        padding: DesignSystem.spacing.md,
     },
     title: {
-        marginBottom: 8,
+        marginBottom: DesignSystem.spacing.sm,
+        color: DesignSystem.colors.white,
     },
     description: {
-        marginBottom: 16,
+        marginBottom: DesignSystem.spacing.md,
+        color: DesignSystem.colors.icyAquaLight,
     },
     detailsContainer: {
-        padding: 16,
-        backgroundColor: Colors.palette.darkBlue,
-        borderRadius: 8,
-        marginBottom: 24,
+        padding: DesignSystem.spacing.md,
+        backgroundColor: 'rgba(197, 255, 248, 0.1)',
+        borderRadius: DesignSystem.borderRadius.lg,
+        marginBottom: DesignSystem.spacing.lg,
+        borderWidth: 1,
+        borderColor: 'rgba(141, 255, 240, 0.2)',
     },
     detail: {
-        color: Colors.dark.text,
-        marginBottom: 8,
+        color: DesignSystem.colors.icyAquaLight,
+        marginBottom: DesignSystem.spacing.sm,
     },
     participantsContainer: {
-        backgroundColor: Colors.palette.darkBlue,
-        borderRadius: 8,
-        padding: 16,
+        backgroundColor: 'rgba(197, 255, 248, 0.1)',
+        borderRadius: DesignSystem.borderRadius.lg,
+        padding: DesignSystem.spacing.md,
+        borderWidth: 1,
+        borderColor: 'rgba(141, 255, 240, 0.2)',
     },
     participantsTitle: {
-        marginBottom: 16,
+        marginBottom: DesignSystem.spacing.md,
+        color: DesignSystem.colors.white,
     },
     participantSection: {
-        marginBottom: 12,
+        marginBottom: DesignSystem.spacing.sm,
     },
     participantName: {
-        marginLeft: 8,
-        marginTop: 4,
+        marginLeft: DesignSystem.spacing.sm,
+        marginTop: DesignSystem.spacing.xs,
+        color: DesignSystem.colors.icyAquaLight,
     },
     eliminated: {
         textDecorationLine: 'line-through',
-        color: Colors.dark.icon,
+        color: DesignSystem.colors.icyAqua,
     },
     alreadyInPactText: {
         textAlign: 'center',
-        color: Colors.dark.tint,
+        color: DesignSystem.colors.neonMintVibrant,
         marginTop: 20,
         fontSize: 16,
         fontWeight: 'bold',

@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, ActivityIndicator, Button } from 'react-native';
+import { StyleSheet, View, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { Colors } from '@/constants/Colors';
+import { DesignSystem } from '@/constants/DesignSystem';
 import { Image } from 'expo-image';
 import { useEmbeddedSolanaWallet, usePrivy } from '@privy-io/expo';
 import { fetchPlayerProfile } from '../../services/api/pactService';
 import { router } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 
 type PlayerProfileApiType = {
   id: string;
@@ -75,30 +75,36 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <ThemedView style={[styles.container, { paddingTop: insets.top, justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={Colors.dark.tint} />
-      </ThemedView>
+      <LinearGradient colors={DesignSystem.gradients.background} style={styles.container}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={DesignSystem.colors.neonMintVibrant} />
+        </View>
+      </LinearGradient>
     );
   }
 
   if (error) {
     return (
-      <ThemedView style={[styles.container, { paddingTop: insets.top, justifyContent: 'center', alignItems: 'center' }]}>
-        <ThemedText>Error: {error.message}</ThemedText>
-      </ThemedView>
+      <LinearGradient colors={DesignSystem.gradients.background} style={styles.container}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: DesignSystem.spacing.md }}>
+          <ThemedText>Error: {error.message}</ThemedText>
+        </View>
+      </LinearGradient>
     );
   }
 
   if (!profileData) {
     return (
-      <ThemedView style={[styles.container, { paddingTop: insets.top, justifyContent: 'center', alignItems: 'center' }]}>
-        <ThemedText>No profile data available.</ThemedText>
-      </ThemedView>
+      <LinearGradient colors={DesignSystem.gradients.background} style={styles.container}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ThemedText>No profile data available.</ThemedText>
+        </View>
+      </LinearGradient>
     );
   }
 
   return (
-    <ThemedView style={[styles.container, { paddingTop: insets.top }]}>
+    <LinearGradient colors={DesignSystem.gradients.background} style={[styles.container, { paddingTop: insets.top }]}>
       <View style={{ flex: 1 }}>
         <View style={styles.profileHeader}>
           <Image source={{ uri: 'https://i.pravatar.cc/150?u=a042581f4e29026704d' }} style={styles.profileImage} />
@@ -117,9 +123,11 @@ export default function ProfilePage() {
         </View>
       </View>
       <View style={styles.logoutButtonContainer}>
-        <Button title="Logout" onPress={handleLogout} color={Colors.dark.tint} />
+        <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+          <ThemedText style={styles.logoutButtonText}>Logout</ThemedText>
+        </TouchableOpacity>
       </View>
-    </ThemedView>
+    </LinearGradient>
   );
 }
 
@@ -129,20 +137,25 @@ const styles = StyleSheet.create({
   },
   profileHeader: {
     alignItems: 'center',
-    padding: 16,
+    padding: DesignSystem.spacing.lg,
   },
   profileImage: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    marginBottom: 16,
+    marginBottom: DesignSystem.spacing.md,
+    borderWidth: 2,
+    borderColor: DesignSystem.colors.neonMintVibrant,
   },
   statsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: Colors.dark.icon,
+    padding: DesignSystem.spacing.md,
+    marginHorizontal: DesignSystem.spacing.md,
+    backgroundColor: 'rgba(197, 255, 248, 0.1)',
+    borderRadius: DesignSystem.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(141, 255, 240, 0.2)',
   },
   stat: {
     alignItems: 'center',
@@ -150,13 +163,27 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: Colors.dark.tint,
+    color: DesignSystem.colors.white,
   },
   statLabel: {
     marginTop: 4,
-    color: Colors.dark.icon,
+    color: DesignSystem.colors.icyAqua,
   },
   logoutButtonContainer: {
-    margin: 16,
+    margin: DesignSystem.spacing.md,
+    paddingBottom: 80, // Ensure it's above the tab bar
+  },
+  logoutButton: {
+    backgroundColor: 'rgba(197, 255, 248, 0.1)',
+    padding: DesignSystem.spacing.md,
+    borderRadius: DesignSystem.borderRadius.lg,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(141, 255, 240, 0.2)',
+  },
+  logoutButtonText: {
+    color: DesignSystem.colors.white,
+    fontWeight: 'bold',
   },
 });
+

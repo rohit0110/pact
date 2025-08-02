@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, ScrollView, TouchableOpacity, Clipboard, Alert } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { Colors } from '@/constants/Colors';
+import { DesignSystem } from '@/constants/DesignSystem';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams } from 'expo-router';
 import { useEmbeddedSolanaWallet } from '@privy-io/expo';
 import { stakeInPact, startChallengePact, fetchPactByPubkey } from '@/services/api/pactService';
 import { PublicKey } from '@solana/web3.js';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function PactDashboardPage() {
   const insets = useSafeAreaInsets();
@@ -27,9 +27,11 @@ export default function PactDashboardPage() {
 
   if (!currentPact) {
     return (
-      <ThemedView style={[styles.container, { paddingTop: insets.top, justifyContent: 'center', alignItems: 'center' }]}>
-        <ThemedText>Pact not found.</ThemedText>
-      </ThemedView>
+      <LinearGradient colors={DesignSystem.gradients.background} style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <View style={{paddingTop: insets.top}}>
+          <ThemedText>Pact not found.</ThemedText>
+        </View>
+      </LinearGradient>
     );
   }
 
@@ -89,17 +91,14 @@ export default function PactDashboardPage() {
   };
 
   return (
-    <ThemedView style={[styles.container, { paddingTop: insets.top }]}>
-      {hasStaked ? (
-        <View style={[styles.stakedContainer]}>
-          <ThemedText style={styles.stakedText}>Staked</ThemedText>
-        </View>
-      ) : (
-        <View style={styles.notStakedContainer}>
-          <ThemedText style={styles.notStakedText}>Not Staked Yet</ThemedText>
-        </View>
-      )}
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+    <LinearGradient colors={DesignSystem.gradients.background} style={styles.container}>
+      <ScrollView
+        contentContainerStyle={{
+          paddingTop: insets.top + DesignSystem.spacing.md,
+          paddingBottom: insets.bottom + DesignSystem.spacing.md,
+          paddingHorizontal: DesignSystem.spacing.md,
+        }}
+      >
         <ThemedText type="title" style={styles.title}>{currentPact.name}</ThemedText>
         <ThemedText style={styles.description}>{currentPact.description}</ThemedText>
 
@@ -143,8 +142,19 @@ export default function PactDashboardPage() {
           )}
         </View>
       </ScrollView>
+
+      {hasStaked ? (
+        <View style={[styles.stakedContainer, { top: insets.top + DesignSystem.spacing.sm }]}>
+          <ThemedText style={styles.stakedText}>Staked</ThemedText>
+        </View>
+      ) : (
+        <View style={[styles.notStakedContainer, { top: insets.top + DesignSystem.spacing.sm }]}>
+          <ThemedText style={styles.notStakedText}>Not Staked Yet</ThemedText>
+        </View>
+      )}
+
       {isCreator && currentPact.status === 'Initialized' && (
-        <View style={styles.buttonContainer}>
+        <View style={[styles.buttonContainer, { paddingBottom: insets.bottom + DesignSystem.spacing.sm }]}>
           {participants.length < 2 && (
             <ThemedText style={styles.errorText}>
               Not enough members to start
@@ -162,7 +172,7 @@ export default function PactDashboardPage() {
           </TouchableOpacity>
         </View>
       )}
-    </ThemedView>
+    </LinearGradient>
   );
 }
 
@@ -170,105 +180,128 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  scrollContent: {
-    padding: 16,
-  },
   title: {
-    marginBottom: 8,
+    marginBottom: DesignSystem.spacing.sm,
+    color: DesignSystem.colors.white,
   },
   description: {
-    marginBottom: 16,
+    marginBottom: DesignSystem.spacing.md,
+    color: DesignSystem.colors.icyAquaLight,
   },
   detailsContainer: {
-    padding: 16,
-    backgroundColor: Colors.palette.darkBlue,
-    borderRadius: 8,
-    marginBottom: 24,
+    padding: DesignSystem.spacing.md,
+    backgroundColor: 'rgba(197, 255, 248, 0.1)',
+    borderRadius: DesignSystem.borderRadius.lg,
+    marginBottom: DesignSystem.spacing.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(141, 255, 240, 0.2)',
   },
   detail: {
-    color: Colors.dark.text,
-    marginBottom: 8,
+    color: DesignSystem.colors.icyAquaLight,
+    marginBottom: DesignSystem.spacing.sm,
   },
   joinCodeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: DesignSystem.spacing.sm,
   },
   copyText: {
-    color: Colors.dark.tint,
-    marginLeft: 8,
+    color: DesignSystem.colors.neonMintVibrant,
+    marginLeft: DesignSystem.spacing.sm,
     fontSize: 12,
   },
   notStakedContainer: {
     position: 'absolute',
-    top: 16,
-    right: 16,
-    backgroundColor: Colors.palette.blue,
+    right: DesignSystem.spacing.md,
+    backgroundColor: 'rgba(255, 0, 0, 0.2)',
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 4,
+    borderRadius: DesignSystem.borderRadius.sm,
     zIndex: 1,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 0, 0, 0.5)',
+  },
+  notStakedText: {
+    color: '#ff8a80',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   stakedContainer: {
     position: 'absolute',
-    top: 16,
-    right: 16,
-    backgroundColor: Colors.palette.teal,
+    right: DesignSystem.spacing.md,
+    backgroundColor: 'rgba(0, 255, 159, 0.2)',
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 4,
+    borderRadius: DesignSystem.borderRadius.sm,
     zIndex: 1,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 255, 159, 0.5)',
   },
   stakedText: {
-    color: Colors.palette.white,
+    color: DesignSystem.colors.neonMintVibrant,
     fontSize: 12,
     fontWeight: 'bold',
   },
   stakeButton: {
-    backgroundColor: Colors.palette.teal,
-    padding: 12,
-    borderRadius: 8,
+    backgroundColor: DesignSystem.colors.neonMint,
+    padding: DesignSystem.spacing.md,
+    borderRadius: DesignSystem.borderRadius.md,
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: DesignSystem.spacing.md,
   },
   stakeButtonText: {
-    color: Colors.palette.white,
+    color: DesignSystem.colors.charcoalBlack,
     fontWeight: 'bold',
   },
   participantsContainer: {
-    backgroundColor: Colors.palette.darkBlue,
-    borderRadius: 8,
-    padding: 16,
+    backgroundColor: 'rgba(197, 255, 248, 0.1)',
+    borderRadius: DesignSystem.borderRadius.lg,
+    padding: DesignSystem.spacing.md,
+    borderWidth: 1,
+    borderColor: 'rgba(141, 255, 240, 0.2)',
+    marginBottom: 80, // Ensure space for the button
   },
   participantsTitle: {
-    marginBottom: 16,
+    marginBottom: DesignSystem.spacing.md,
+    color: DesignSystem.colors.white,
   },
   participantSection: {
-    marginBottom: 12,
+    marginBottom: DesignSystem.spacing.sm,
   },
   participantName: {
-    marginLeft: 8,
-    marginTop: 4,
+    marginLeft: DesignSystem.spacing.sm,
+    marginTop: DesignSystem.spacing.xs,
+    color: DesignSystem.colors.icyAquaLight,
   },
   eliminated: {
     textDecorationLine: 'line-through',
-    color: Colors.dark.icon,
+    color: DesignSystem.colors.icyAqua,
   },
   buttonContainer: {
-    padding: 16,
-    marginBottom: 24,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: DesignSystem.spacing.md,
+    backgroundColor: 'transparent',
+    paddingTop: DesignSystem.spacing.sm,
   },
   button: {
-    backgroundColor: Colors.dark.tint,
-    padding: 16,
-    borderRadius: 8,
+    backgroundColor: DesignSystem.colors.neonMint,
+    padding: DesignSystem.spacing.md,
+    borderRadius: DesignSystem.borderRadius.md,
     alignItems: 'center',
   },
   disabledButton: {
-    backgroundColor: Colors.dark.icon,
+    backgroundColor: DesignSystem.colors.slateGreyBlue,
   },
   buttonText: {
-    color: Colors.dark.background,
+    color: DesignSystem.colors.charcoalBlack,
     fontWeight: 'bold',
+  },
+  errorText: {
+    color: 'red',
+    textAlign: 'center',
+    marginBottom: DesignSystem.spacing.sm,
   },
 });

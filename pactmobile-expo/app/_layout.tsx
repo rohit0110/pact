@@ -1,19 +1,11 @@
-import { Stack } from 'expo-router';
-import { Colors } from '@/constants/Colors';
-
-// app/_layout.tsx
-import 'fast-text-encoding';
-import 'react-native-get-random-values';
-import '@ethersproject/shims';
-
 import { PrivyProvider } from '@privy-io/expo';
+import { Stack } from 'expo-router';
 import Constants from 'expo-constants';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
 
 const PRIVY_APP_ID = Constants.expoConfig?.extra?.PRIVY_APP_ID;
 const PRIVY_CLIENT_ID = Constants.expoConfig?.extra?.PRIVY_CLIENT_ID;
-console.log('PRIVY IDs:', { PRIVY_APP_ID, PRIVY_CLIENT_ID });
+
 export default function RootLayout() {
   return (
     <PrivyProvider appId={PRIVY_APP_ID} clientId={PRIVY_CLIENT_ID} config={{
@@ -24,12 +16,14 @@ export default function RootLayout() {
         },
     }}>
       <SafeAreaProvider>
-        <StatusBar style="auto" />
-        <Stack initialRouteName='index'>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="pact-dashboard" options={{ title: 'Pact Dashboard', headerStyle: { backgroundColor: Colors.dark.background }, headerTintColor: Colors.dark.tint }} />
-          <Stack.Screen name="create-pact" options={{ title: 'Create Pact', headerStyle: { backgroundColor: Colors.dark.background }, headerTintColor: Colors.dark.tint }} />
-        </Stack>
+      <Stack initialRouteName='index'>
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="create-pact" options={{ headerShown: false }} />
+        <Stack.Screen name="create-profile" options={{ headerShown: false }} />
+        <Stack.Screen name="join-pact" options={{ headerShown: false }} />
+        <Stack.Screen name="pact-dashboard" options={{ headerShown: false }} />
+      </Stack>
       </SafeAreaProvider>
     </PrivyProvider>
   );

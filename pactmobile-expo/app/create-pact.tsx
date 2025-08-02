@@ -1,15 +1,15 @@
 
 import React, { useState } from 'react';
-import { StyleSheet, View, TextInput, Button, ActivityIndicator, Alert, ScrollView } from 'react-native';
+import { StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, Alert, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { Colors } from '@/constants/Colors';
+import { DesignSystem } from '@/constants/DesignSystem';
 import { useRouter } from 'expo-router';
 import RNPickerSelect from 'react-native-picker-select';
 import { createPact } from '../services/api/pactService';
 import { useEmbeddedSolanaWallet } from '@privy-io/expo';
 import { PublicKey } from '@solana/web3.js';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const goalTypes = [
   { label: 'Daily Steps', value: { dailySteps: {} } },
@@ -101,27 +101,27 @@ export default function CreatePactScreen() {
   };
 
   return (
-    <ThemedView style={[styles.container, { paddingTop: insets.top }]}>
+    <LinearGradient colors={DesignSystem.gradients.background} style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <ThemedText type="title" style={{ marginBottom: 20 }}>Create a New Pact</ThemedText>
+        <ThemedText type="title" style={styles.title}>Create a New Pact</ThemedText>
         <TextInput
           style={styles.input}
           placeholder="Pact Name"
-          placeholderTextColor={Colors.dark.icon}
+          placeholderTextColor={DesignSystem.colors.icyAqua}
           value={name}
           onChangeText={setName}
         />
         <TextInput
           style={styles.input}
           placeholder="Pact Details"
-          placeholderTextColor={Colors.dark.icon}
+          placeholderTextColor={DesignSystem.colors.icyAqua}
           value={description}
           onChangeText={setDescription}
         />
         <TextInput
           style={styles.input}
           placeholder="Stake (in SOL)"
-          placeholderTextColor={Colors.dark.icon}
+          placeholderTextColor={DesignSystem.colors.icyAqua}
           keyboardType="numeric"
           value={stake}
           onChangeText={setStake}
@@ -136,7 +136,7 @@ export default function CreatePactScreen() {
         <TextInput
           style={styles.input}
           placeholder="Goal Value"
-          placeholderTextColor={Colors.dark.icon}
+          placeholderTextColor={DesignSystem.colors.icyAqua}
           keyboardType="numeric"
           value={goalValue}
           onChangeText={setGoalValue}
@@ -156,15 +156,16 @@ export default function CreatePactScreen() {
           value={comparisonOperator}
         />
         {error && <ThemedText style={styles.errorText}>{error}</ThemedText>}
-        <Button
-          title={loading ? "Creating..." : "Create Pact"}
+        <TouchableOpacity
+          style={styles.button}
           onPress={handleCreatePact}
-          color={Colors.dark.tint}
           disabled={loading}
-        />
-        {loading && <ActivityIndicator style={{ marginTop: 10 }} />}
+        >
+          <ThemedText style={styles.buttonText}>{loading ? "Creating..." : "Create Pact"}</ThemedText>
+        </TouchableOpacity>
+        {loading && <ActivityIndicator style={{ marginTop: 10 }} color={DesignSystem.colors.neonMintVibrant} />}
       </ScrollView>
-    </ThemedView>
+    </LinearGradient>
   );
 }
 
@@ -173,16 +174,35 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContainer: {
-    padding: 16,
+    padding: DesignSystem.spacing.md,
+  },
+  title: {
+    marginBottom: DesignSystem.spacing.lg,
+    color: DesignSystem.colors.white,
   },
   input: {
-    height: 40,
-    borderColor: Colors.dark.icon,
+    width: '100%',
+    padding: DesignSystem.spacing.md,
     borderWidth: 1,
-    borderRadius: 8,
-    marginBottom: 16,
-    paddingHorizontal: 8,
-    color: Colors.dark.text,
+    borderColor: 'rgba(141, 255, 240, 0.2)',
+    backgroundColor: 'rgba(197, 255, 248, 0.1)',
+    borderRadius: DesignSystem.borderRadius.md,
+    marginVertical: DesignSystem.spacing.sm,
+    color: DesignSystem.colors.white,
+    fontSize: 16,
+  },
+  button: {
+    width: '100%',
+    padding: DesignSystem.spacing.md,
+    backgroundColor: DesignSystem.colors.neonMint,
+    borderRadius: DesignSystem.borderRadius.md,
+    alignItems: 'center',
+    marginVertical: DesignSystem.spacing.sm,
+  },
+  buttonText: {
+    color: DesignSystem.colors.charcoalBlack,
+    fontWeight: 'bold',
+    fontSize: 16,
   },
   errorText: {
     color: 'red',
@@ -197,9 +217,10 @@ const pickerSelectStyles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 10,
     borderWidth: 1,
-    borderColor: Colors.dark.icon,
-    borderRadius: 4,
-    color: Colors.dark.text,
+    borderColor: 'rgba(141, 255, 240, 0.2)',
+    backgroundColor: 'rgba(197, 255, 248, 0.1)',
+    borderRadius: DesignSystem.borderRadius.md,
+    color: DesignSystem.colors.white,
     paddingRight: 30, // to ensure the text is never behind the icon
     marginBottom: 16,
   },
@@ -207,10 +228,11 @@ const pickerSelectStyles = StyleSheet.create({
     fontSize: 16,
     paddingHorizontal: 10,
     paddingVertical: 8,
-    borderWidth: 0.5,
-    borderColor: Colors.dark.icon,
-    borderRadius: 8,
-    color: Colors.dark.text,
+    borderWidth: 1,
+    borderColor: 'rgba(141, 255, 240, 0.2)',
+    backgroundColor: 'rgba(197, 255, 248, 0.1)',
+    borderRadius: DesignSystem.borderRadius.md,
+    color: DesignSystem.colors.white,
     paddingRight: 30, // to ensure the text is never behind the icon
     marginBottom: 16,
   },
