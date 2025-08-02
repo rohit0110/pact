@@ -1,23 +1,30 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
-import { StyleSheet, View, ScrollView, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity, Clipboard, Alert } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { Colors } from '@/constants/Colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams } from 'expo-router';
 import { useEmbeddedSolanaWallet } from '@privy-io/expo';
-import { stakeInPact, startChallengePact } from '@/services/api/pactService';
+import { stakeInPact, startChallengePact, fetchPactByPubkey } from '@/services/api/pactService';
 import { PublicKey } from '@solana/web3.js';
-
 
 export default function PactDashboardPage() {
   const insets = useSafeAreaInsets();
-  const { pact } = useLocalSearchParams();
-  const { wallets } = useEmbeddedSolanaWallet(); // Hooks moved to the top
-
+  const { pact: pactString } = useLocalSearchParams();
+  const { wallets } = useEmbeddedSolanaWallet();
   const userPublicKey = wallets?.[0]?.address;
-  const currentPact = typeof pact === 'string' ? JSON.parse(pact) : pact;
+
+  const [currentPact, setCurrentPact] = useState(() => {
+    return typeof pactString === 'string' ? JSON.parse(pactString) : pactString;
+  });
+
+  useEffect(() => {
+    if (typeof pactString === 'string') {
+      setCurrentPact(JSON.parse(pactString));
+    }
+  }, [pactString]);
 
   if (!currentPact) {
     return (
@@ -44,7 +51,6 @@ export default function PactDashboardPage() {
       console.error("User public key or provider not found.");
       return;
     }
-    console.log("Provider object in handleStake:", provider); // Added for debugging
     try {
       await stakeInPact(
         new PublicKey(currentPact.pubkey),
@@ -53,7 +59,8 @@ export default function PactDashboardPage() {
         currentPact.stake_amount
       );
       console.log("Staked successfully");
-      // TODO: Add logic to refresh the pact data to reflect the new state
+      const updatedPact = await fetchPactByPubkey(currentPact.pubkey);
+      setCurrentPact(updatedPact);
     } catch (error) {
       console.error("Failed to stake:", error);
     }
@@ -75,9 +82,20 @@ export default function PactDashboardPage() {
     }
   };
 
+  const handleCopyJoinCode = () => {
+    if (currentPact.join_code) {
+      Clipboard.setString(currentPact.join_code);
+      Alert.alert('Copied', 'Pact join code copied to clipboard!');
+    }
+  };
+
   return (
     <ThemedView style={[styles.container, { paddingTop: insets.top }]}>
-      {!hasStaked && (
+      {hasStaked ? (
+        <View style={[styles.stakedContainer]}>
+          <ThemedText style={styles.stakedText}>Staked</ThemedText>
+        </View>
+      ) : (
         <View style={styles.notStakedContainer}>
           <ThemedText style={styles.notStakedText}>Not Staked Yet</ThemedText>
         </View>
@@ -91,6 +109,14 @@ export default function PactDashboardPage() {
           <ThemedText style={styles.detail}>Status: {currentPact.status}</ThemedText>
           <ThemedText style={styles.detail}>Stake: ${currentPact.stake_amount}</ThemedText>
           <ThemedText style={styles.detail}>Prize Pool: ${currentPact.prize_pool}</ThemedText>
+          {currentPact.join_code && (
+            <TouchableOpacity onPress={handleCopyJoinCode} style={styles.joinCodeContainer}>
+              <ThemedText style={styles.detail}>
+                Join Code: {currentPact.join_code}
+              </ThemedText>
+              <ThemedText style={styles.copyText}>(tap to copy)</ThemedText>
+            </TouchableOpacity>
+          )}
         </View>
 
         {!hasStaked && (
@@ -120,9 +146,17 @@ export default function PactDashboardPage() {
       </ScrollView>
       {isCreator && currentPact.status === 'Initialized' && (
         <View style={styles.buttonContainer}>
+          {participants.length < 2 && (
+            <ThemedText style={styles.errorText}>
+              Not enough members to start
+            </ThemedText>
+          )}
           <TouchableOpacity
-            style={[styles.button, !allStaked && styles.disabledButton]}
-            disabled={!allStaked}
+            style={[
+              styles.button,
+              (!allStaked || participants.length < 2) && styles.disabledButton,
+            ]}
+            disabled={!allStaked || participants.length < 2}
             onPress={handleStartPact}
           >
             <ThemedText style={styles.buttonText}>Start Pact</ThemedText>
@@ -156,6 +190,16 @@ const styles = StyleSheet.create({
     color: Colors.dark.text,
     marginBottom: 8,
   },
+  joinCodeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  copyText: {
+    color: Colors.dark.tint,
+    marginLeft: 8,
+    fontSize: 12,
+  },
   notStakedContainer: {
     position: 'absolute',
     top: 16,
@@ -166,7 +210,17 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     zIndex: 1,
   },
-  notStakedText: {
+  stakedContainer: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    backgroundColor: Colors.palette.teal,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    zIndex: 1,
+  },
+  stakedText: {
     color: Colors.palette.white,
     fontSize: 12,
     fontWeight: 'bold',

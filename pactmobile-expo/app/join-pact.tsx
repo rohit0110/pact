@@ -63,6 +63,7 @@ export default function JoinPactPage() {
     const participants = pact.participants || [];
     const activeParticipants = participants.filter(p => p.is_eliminated === 0);
     const eliminatedParticipants = participants.filter(p => p.is_eliminated === 1);
+    const isUserInPact = userPublicKey && participants.some(p => p.pubkey === userPublicKey);
 
     return (
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -94,9 +95,13 @@ export default function JoinPactPage() {
             </View>
           )}
         </View>
-        <TouchableOpacity style={styles.button} onPress={handleJoinPact}>
-            <ThemedText style={styles.buttonText}>Join Pact</ThemedText>
-        </TouchableOpacity>
+        {isUserInPact ? (
+          <ThemedText style={styles.alreadyInPactText}>You are already in this pact.</ThemedText>
+        ) : (
+          <TouchableOpacity style={styles.button} onPress={handleJoinPact}>
+              <ThemedText style={styles.buttonText}>Join Pact</ThemedText>
+          </TouchableOpacity>
+        )}
       </ScrollView>
     );
   };
@@ -202,5 +207,12 @@ const styles = StyleSheet.create({
     eliminated: {
         textDecorationLine: 'line-through',
         color: Colors.dark.icon,
+    },
+    alreadyInPactText: {
+        textAlign: 'center',
+        color: Colors.dark.tint,
+        marginTop: 20,
+        fontSize: 16,
+        fontWeight: 'bold',
     },
 });

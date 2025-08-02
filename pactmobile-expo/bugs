@@ -4,4 +4,4 @@
 4) After Staking, Stake bbutton needs to disappear. Staked Button needs to change as well. Will check if that is in CRON
 5) If any call fails, no way to refresh the page right now
 6) Shouldnt be able to start a pact with just 1 person
-7) 
+7) Always goes to (tab)/index because the useEffect is user var

@@ -51,6 +51,20 @@ export const fetchPactViaJoinCode = async (joinCode: string) => {
   }
 };
 
+export const fetchPactByPubkey = async (pubkey: string) => {
+  try {
+    const response = await fetch(`${BASE_URL}/api/pacts/${pubkey}`);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    return data;
+  } catch (e) {
+    console.error("Failed to fetch pact by pubkey:", e);
+    throw e;
+  }
+};
+
 export const createPlayerProfile = async (userPublicKey: PublicKey, name: string, githubUsername: string, provider: any) => {
   try {
     console.log(`Creating profile for public key: ${userPublicKey.toBase58()}`);
