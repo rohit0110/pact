@@ -1,13 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, ScrollView, TouchableOpacity, Clipboard, Alert } from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity, Clipboard, Alert, Dimensions, Share } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { DesignSystem } from '@/constants/DesignSystem';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams } from 'expo-router';
 import { useEmbeddedSolanaWallet } from '@privy-io/expo';
-import { stakeInPact, startChallengePact, fetchPactByPubkey } from '@/services/api/pactService';
+import { stakeInPact, startChallengePact, fetchPactByPubkey, fetchPlayerProfile } from '@/services/api/pactService';
 import { PublicKey } from '@solana/web3.js';
 import { LinearGradient } from 'expo-linear-gradient';
+import PieChart from '@/components/PieChart';
+import { IconSymbol } from '@/components/ui/IconSymbol';
+import { BlurView } from 'expo-blur';
+
+const { height: screenHeight } = Dimensions.get('window');
 
 export default function PactDashboardPage() {
   const insets = useSafeAreaInsets();
@@ -18,6 +23,7 @@ export default function PactDashboardPage() {
   const [currentPact, setCurrentPact] = useState(() => {
     return typeof pactString === 'string' ? JSON.parse(pactString) : pactString;
   });
+  const [participantNames, setParticipantNames] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
     if (typeof pactString === 'string') {
@@ -25,12 +31,29 @@ export default function PactDashboardPage() {
     }
   }, [pactString]);
 
+  useEffect(() => {
+    const loadParticipantNames = async () => {
+      if (currentPact && currentPact.participants) {
+        const names: { [key: string]: string } = {};
+        for (const p of currentPact.participants) {
+          try {
+            const profile = await fetchPlayerProfile(p.pubkey);
+            names[p.pubkey] = profile.name || p.pubkey.substring(0, 6) + '...' + p.pubkey.substring(p.pubkey.length - 6);
+          } catch (error) {
+            console.error("Failed to fetch profile for participant", p.pubkey, error);
+            names[p.pubkey] = p.pubkey.substring(0, 6) + '...' + p.pubkey.substring(p.pubkey.length - 6); // Fallback to truncated pubkey
+          }
+        }
+        setParticipantNames(names);
+      }
+    };
+    loadParticipantNames();
+  }, [currentPact]);
+
   if (!currentPact) {
     return (
       <LinearGradient colors={DesignSystem.gradients.background} style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <View style={{paddingTop: insets.top}}>
-          <ThemedText>Pact not found.</ThemedText>
-        </View>
+        <ThemedText>Pact not found.</ThemedText>
       </LinearGradient>
     );
   }
@@ -79,7 +102,7 @@ export default function PactDashboardPage() {
       console.log("Pact started successfully");
       // TODO: Add logic to refresh the pact data to reflect the new state
     } catch (error) {
-      console.error("Failed to start pact:", error);
+      console.error("Failed to Start Pact", error);
     }
   };
 
@@ -90,88 +113,136 @@ export default function PactDashboardPage() {
     }
   };
 
-  return (
-    <LinearGradient colors={DesignSystem.gradients.background} style={styles.container}>
-      <ScrollView
-        contentContainerStyle={{
-          paddingTop: insets.top + DesignSystem.spacing.md,
-          paddingBottom: insets.bottom + DesignSystem.spacing.md,
-          paddingHorizontal: DesignSystem.spacing.md,
-        }}
-      >
-        <ThemedText type="title" style={styles.title}>{currentPact.name}</ThemedText>
-        <ThemedText style={styles.description}>{currentPact.description}</ThemedText>
+  const getDisabledReason = () => {
+    if (participants.length < 2) return "Not enough members to start";
+    if (!allStaked) return "Waiting for all members to stake";
+    return "";
+  };
 
-        <View style={styles.detailsContainer}>
-          <ThemedText style={styles.detail}>Creator: {currentPact.creator}</ThemedText>
-          <ThemedText style={styles.detail}>Status: {currentPact.status}</ThemedText>
-          <ThemedText style={styles.detail}>Stake: ${currentPact.stake_amount}</ThemedText>
-          <ThemedText style={styles.detail}>Prize Pool: ${currentPact.prize_pool}</ThemedText>
-          {currentPact.code && (
-            <TouchableOpacity onPress={handleCopyJoinCode} style={styles.joinCodeContainer}>
-              <ThemedText style={styles.detail}>
-                Join Code: {currentPact.code}
-              </ThemedText>
-              <ThemedText style={styles.copyText}>(tap to copy)</ThemedText>
+  const renderBottomButtons = () => {
+    const disabledReason = getDisabledReason();
+    if (!hasStaked) {
+      if (isCreator) {
+        return (
+          <View style={styles.buttonRow}>
+            <TouchableOpacity style={[styles.button, styles.halfButton]} onPress={handleStake}>
+              <ThemedText style={styles.buttonText}>Stake</ThemedText>
             </TouchableOpacity>
-          )}
-        </View>
-
-        {!hasStaked && (
-          <TouchableOpacity style={styles.stakeButton} onPress={handleStake}>
-            <ThemedText style={styles.stakeButtonText}>Stake</ThemedText>
-          </TouchableOpacity>
-        )}
-
-        <View style={styles.participantsContainer}>
-          <ThemedText type="subtitle" style={styles.participantsTitle}>Participants</ThemedText>
-          <View style={styles.participantSection}>
-            <ThemedText type="defaultSemiBold">Active ({activeParticipants.length})</ThemedText>
-            {activeParticipants.map((p, index) => (
-              <ThemedText key={index} style={styles.participantName}>{p.pubkey}</ThemedText>
-            ))}
+            <TouchableOpacity
+              style={[styles.button, styles.halfButton, !!disabledReason && styles.disabledButton]}
+              disabled={!!disabledReason}
+              onPress={handleStartPact}
+            >
+              <ThemedText style={styles.buttonText}>Start Pact</ThemedText>
+            </TouchableOpacity>
           </View>
-
-          {eliminatedParticipants.length > 0 && (
-            <View style={styles.participantSection}>
-              <ThemedText type="defaultSemiBold">Eliminated ({eliminatedParticipants.length})</ThemedText>
-              {eliminatedParticipants.map((p, index) => (
-                <ThemedText key={index} style={[styles.participantName, styles.eliminated]}>{p.pubkey}</ThemedText>
-              ))}
-            </View>
-          )}
-        </View>
-      </ScrollView>
-
-      {hasStaked ? (
-        <View style={[styles.stakedContainer, { top: insets.top + DesignSystem.spacing.sm }]}>
-          <ThemedText style={styles.stakedText}>Staked</ThemedText>
-        </View>
-      ) : (
-        <View style={[styles.notStakedContainer, { top: insets.top + DesignSystem.spacing.sm }]}>
-          <ThemedText style={styles.notStakedText}>Not Staked Yet</ThemedText>
-        </View>
-      )}
-
-      {isCreator && currentPact.status === 'Initialized' && (
-        <View style={[styles.buttonContainer, { paddingBottom: insets.bottom + DesignSystem.spacing.sm }]}>
-          {participants.length < 2 && (
-            <ThemedText style={styles.errorText}>
-              Not enough members to start
-            </ThemedText>
-          )}
+        );
+      }
+      return (
+        <TouchableOpacity style={styles.button} onPress={handleStake}>
+          <ThemedText style={styles.buttonText}>Stake</ThemedText>
+        </TouchableOpacity>
+      );
+    }
+    if (isCreator && currentPact.status === 'Initialized') {
+      return (
+        <View>
           <TouchableOpacity
-            style={[
-              styles.button,
-              (!allStaked || participants.length < 2) && styles.disabledButton,
-            ]}
-            disabled={!allStaked || participants.length < 2}
+            style={[styles.button, !!disabledReason && styles.disabledButton]}
+            disabled={!!disabledReason}
             onPress={handleStartPact}
           >
-            <ThemedText style={styles.buttonText}>Start Pact</ThemedText>
+            <ThemedText style={[styles.buttonText, !!disabledReason && { color: 'red' }]}>{disabledReason || "Start Pact"}</ThemedText>
           </TouchableOpacity>
         </View>
-      )}
+      );
+    }
+    return null;
+  };
+
+  const topCardHeight = screenHeight * 0.25;
+  const sheetHeight = screenHeight - topCardHeight - insets.top;
+
+  return (
+    <LinearGradient colors={DesignSystem.gradients.background} style={styles.container}>
+      <View style={[styles.pactSummaryCard, { height: topCardHeight, paddingTop: insets.top }]}>
+        <LinearGradient
+          colors={['#00B49F', '#0AC9C4', '#75E5DC']}
+          start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }}
+          style={styles.pactSummaryGradient}
+        >
+          <View style={styles.pactSummaryLeft}>
+            <ThemedText type="title" style={styles.pactSummaryTitle}>{currentPact.name}</ThemedText>
+
+              <ThemedText style={styles.statusText}>{currentPact.status}</ThemedText>
+
+            <ThemedText style={styles.pactSummaryDescription}>{currentPact.description}</ThemedText>
+            {currentPact.code && (
+              <View style={styles.joinCodeRow}>
+                <TouchableOpacity onPress={handleCopyJoinCode} style={styles.joinCodeContainer}>
+                  <ThemedText style={[styles.detail, { textDecorationLine: 'underline' }]}>
+                    Join Code: {currentPact.code}
+                  </ThemedText>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+          <View style={styles.pactSummaryRight}>
+            <ThemedText style={styles.prizePoolAmount}>{currentPact.prize_pool}</ThemedText>
+            <ThemedText style={styles.prizePoolLabel}>Prize Pool</ThemedText>
+          </View>
+        </LinearGradient>
+      </View>
+
+      <View style={[styles.sheetContainer, { height: sheetHeight, top: topCardHeight + insets.top }]}>
+        <BlurView intensity={50} tint="dark" style={styles.sheet}>
+          <ScrollView
+            contentContainerStyle={{
+              paddingHorizontal: DesignSystem.spacing.md,
+              paddingBottom: insets.bottom + 120, // Space for the button
+            }}
+          >
+            <View style={styles.goalCard}>
+              <IconSymbol name="logo.github" size={24} color={DesignSystem.colors.white} />
+              <ThemedText style={styles.goalText}>{currentPact.goal_value} {currentPact.goal_type}</ThemedText>
+            </View>
+
+            <View style={styles.chartContainer}>
+              <PieChart active={activeParticipants.length} total={participants.length}>
+                <ThemedText style={styles.chartLabel}>{`${activeParticipants.length} Active`}</ThemedText>
+                <ThemedText style={styles.chartSubLabel}>{`/ ${participants.length} Total`}</ThemedText>
+              </PieChart>
+            </View>
+
+            <View style={styles.participantsListContainer}>
+              <ThemedText type="subtitle" style={styles.participantsTitle}>Active Participants</ThemedText>
+              {activeParticipants.map((p, index) => (
+                <View key={index} style={styles.participantCard}>
+                  <ThemedText style={styles.participantName} numberOfLines={1}>{participantNames[p.pubkey] || p.pubkey}</ThemedText>
+                  <View style={styles.participantStatus}>
+                    <IconSymbol name="checkmark.circle.fill" size={16} color={DesignSystem.colors.neonMintVibrant} />
+                    <ThemedText style={styles.participantStatusText}>Staked</ThemedText>
+                  </View>
+                </View>
+              ))}
+            </View>
+
+            {eliminatedParticipants.length > 0 && (
+              <View style={styles.participantsListContainer}>
+                <ThemedText type="subtitle" style={styles.participantsTitle}>Eliminated Participants</ThemedText>
+                {eliminatedParticipants.map((p, index) => (
+                  <View key={index} style={[styles.participantCard, styles.eliminatedCard]}>
+                    <ThemedText style={styles.participantName} numberOfLines={1}>{participantNames[p.pubkey] || p.pubkey}</ThemedText>
+                  </View>
+                ))}
+              </View>
+            )}
+          </ScrollView>
+          <View style={[styles.bottomButtonContainer, { paddingBottom: insets.bottom + DesignSystem.spacing.sm }]}>
+            {renderBottomButtons()}
+          </View>
+        </BlurView>
+      </View>
     </LinearGradient>
   );
 }
@@ -180,104 +251,150 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  title: {
-    marginBottom: DesignSystem.spacing.sm,
+  pactSummaryCard: {
+    marginTop: '5%',
+    width: '90%',
+    alignSelf: 'center',
+    borderRadius: DesignSystem.borderRadius.lg,
+    overflow: 'hidden',
+  },
+  pactSummaryGradient: {
+    flex: 1,
+    borderRadius: DesignSystem.borderRadius.lg,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: DesignSystem.spacing.md,
+    backgroundColor: 'rgba(15,15,15,0,85)'
+  },
+  pactSummaryLeft: {
+    flex: 2,
+    justifyContent: 'center',
+  },
+  pactSummaryRight: {
+    flex: 1,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  pactSummaryTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
     color: DesignSystem.colors.white,
+    marginBottom: DesignSystem.spacing.xs,
+  },
+  pactSummaryDescription: {
+    fontSize: 14,
+    color: DesignSystem.colors.icyAquaLight,
+    marginBottom: DesignSystem.spacing.sm,
+  },
+  prizePoolAmount: {
+    fontSize: 36,
+    fontWeight: 'bold',
+    color: DesignSystem.colors.white,
+  },
+  prizePoolLabel: {
+    fontSize: 14,
+    color: DesignSystem.colors.icyAqua,
+  },
+  sheetContainer: {
+    width: '100%',
+    position: 'absolute',
+    bottom: 0,
+  },
+  sheet: {
+    flex: 1,
+    borderTopLeftRadius: DesignSystem.borderRadius.lg,
+    borderTopRightRadius: DesignSystem.borderRadius.lg,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+  },
+  pactInfoContainer: {
+    paddingTop: DesignSystem.spacing.lg,
+    marginBottom: DesignSystem.spacing.lg,
+  },
+  pactNameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: DesignSystem.spacing.sm,
+  },
+  title: {
+    color: DesignSystem.colors.white,
+    marginRight: DesignSystem.spacing.sm,
+  },
+  statusText: {
+    color: DesignSystem.colors.charcoalBlack,
+    fontWeight: 'bold',
+    fontSize: 12,
   },
   description: {
     marginBottom: DesignSystem.spacing.md,
     color: DesignSystem.colors.icyAquaLight,
   },
-  detailsContainer: {
-    padding: DesignSystem.spacing.md,
-    backgroundColor: 'rgba(197, 255, 248, 0.1)',
+  goalCard: {
+    backgroundColor: 'rgba(15, 15, 15, 0.5)',
     borderRadius: DesignSystem.borderRadius.lg,
-    marginBottom: DesignSystem.spacing.lg,
-    borderWidth: 1,
-    borderColor: 'rgba(141, 255, 240, 0.2)',
-  },
-  detail: {
-    color: DesignSystem.colors.icyAquaLight,
-    marginBottom: DesignSystem.spacing.sm,
-  },
-  joinCodeContainer: {
+    padding: DesignSystem.spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: DesignSystem.spacing.sm,
+    marginBottom: DesignSystem.spacing.lg,
   },
-  copyText: {
-    color: DesignSystem.colors.neonMintVibrant,
-    marginLeft: DesignSystem.spacing.sm,
-    fontSize: 12,
-  },
-  notStakedContainer: {
-    position: 'absolute',
-    right: DesignSystem.spacing.md,
-    backgroundColor: 'rgba(255, 0, 0, 0.2)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: DesignSystem.borderRadius.sm,
-    zIndex: 1,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 0, 0, 0.5)',
-  },
-  notStakedText: {
-    color: '#ff8a80',
-    fontSize: 12,
+  goalText: {
+    fontSize: 18,
     fontWeight: 'bold',
+    color: DesignSystem.colors.white,
+    marginLeft: DesignSystem.spacing.md,
   },
-  stakedContainer: {
-    position: 'absolute',
-    right: DesignSystem.spacing.md,
-    backgroundColor: 'rgba(0, 255, 159, 0.2)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: DesignSystem.borderRadius.sm,
-    zIndex: 1,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 255, 159, 0.5)',
-  },
-  stakedText: {
-    color: DesignSystem.colors.neonMintVibrant,
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  stakeButton: {
-    backgroundColor: DesignSystem.colors.neonMint,
-    padding: DesignSystem.spacing.md,
-    borderRadius: DesignSystem.borderRadius.md,
+  chartContainer: {
     alignItems: 'center',
-    marginBottom: DesignSystem.spacing.md,
+    marginBottom: DesignSystem.spacing.lg,
   },
-  stakeButtonText: {
-    color: DesignSystem.colors.charcoalBlack,
+  chartLabel: {
+    color: DesignSystem.colors.white,
+    fontSize: 18,
     fontWeight: 'bold',
+    textAlign: 'center',
   },
-  participantsContainer: {
-    backgroundColor: 'rgba(197, 255, 248, 0.1)',
-    borderRadius: DesignSystem.borderRadius.lg,
-    padding: DesignSystem.spacing.md,
-    borderWidth: 1,
-    borderColor: 'rgba(141, 255, 240, 0.2)',
-    marginBottom: 80, // Ensure space for the button
+  chartSubLabel: {
+    color: DesignSystem.colors.icyAqua,
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  participantsListContainer: {
+    marginBottom: DesignSystem.spacing.lg,
   },
   participantsTitle: {
-    marginBottom: DesignSystem.spacing.md,
     color: DesignSystem.colors.white,
+    marginBottom: DesignSystem.spacing.md,
   },
-  participantSection: {
+  participantCard: {
+    backgroundColor: 'rgba(15, 15, 15, 0.5)',
+    borderRadius: DesignSystem.borderRadius.md,
+    padding: DesignSystem.spacing.md,
     marginBottom: DesignSystem.spacing.sm,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  eliminatedCard: {
+    backgroundColor: 'rgba(255, 0, 0, 0.1)',
   },
   participantName: {
-    marginLeft: DesignSystem.spacing.sm,
-    marginTop: DesignSystem.spacing.xs,
     color: DesignSystem.colors.icyAquaLight,
+    flex: 1,
   },
-  eliminated: {
-    textDecorationLine: 'line-through',
-    color: DesignSystem.colors.icyAqua,
+  participantStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  buttonContainer: {
+  participantStatusText: {
+    color: DesignSystem.colors.neonMintVibrant,
+    marginLeft: DesignSystem.spacing.sm,
+    fontWeight: 'bold',
+  },
+  bottomButtonContainer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
@@ -286,11 +403,29 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     paddingTop: DesignSystem.spacing.sm,
   },
+  joinCodeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: DesignSystem.spacing.sm,
+    justifyContent: 'space-between',
+  },
+  joinCodeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   button: {
     backgroundColor: DesignSystem.colors.neonMint,
     padding: DesignSystem.spacing.md,
     borderRadius: DesignSystem.borderRadius.md,
     alignItems: 'center',
+    flex: 1,
+  },
+  halfButton: {
+    marginHorizontal: DesignSystem.spacing.sm,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
   disabledButton: {
     backgroundColor: DesignSystem.colors.slateGreyBlue,
