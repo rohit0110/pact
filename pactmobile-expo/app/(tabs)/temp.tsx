@@ -1,4 +1,4 @@
-import { StyleSheet, View, Pressable, Button } from 'react-native';
+import { StyleSheet, View, Button } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router'; // for navigation
 import { usePrivy } from '@privy-io/expo'; // or your auth hook
@@ -6,15 +6,24 @@ import { usePrivy } from '@privy-io/expo'; // or your auth hook
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { Colors } from '@/constants/Colors';
+import { useEffect } from 'react';
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
-  const { logout } = usePrivy(); // if using Privy auth
+  const { logout, user } = usePrivy(); // if using Privy auth
 
   const handleLogout = async () => {
-    await logout(); // clear auth session
-    router.replace('/'); // redirect to app/index.tsx
+    if(user) {
+      await logout();
+    }
+    router.replace('/'); 
   };
+
+  useEffect(() => {
+    if (!user) {
+      router.replace('/');
+    }
+  }, [user]);
 
   return (
     <ThemedView style={[styles.container, { paddingTop: insets.top }]}>

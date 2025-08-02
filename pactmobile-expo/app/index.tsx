@@ -17,11 +17,10 @@ import { fetchPlayerProfile } from '@/services/api/pactService';
 import { router } from 'expo-router';
 
 export default function LoginScreen() {
-  const { isReady, user, logout } = usePrivy();
+  const { isReady, user } = usePrivy();
   const { wallets } = useEmbeddedSolanaWallet();
   const { sendCode, loginWithCode } = useLoginWithEmail();
   const { login: loginWithGoogle } = useLoginWithOAuth();
-
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [codeSent, setCodeSent] = useState(false);
@@ -31,24 +30,23 @@ export default function LoginScreen() {
 
   useEffect(() => {
     const handleUserLogin = async () => {
-      if (user) {
-        setProfileLoading(true);
-        try {
-          // Check if player profile exists
-          
-          await fetchPlayerProfile(wallets![0].address);
-          router.replace('/(tabs)'); // Redirect to main tabbed home screen
-        } catch (error) {
-          // If profile not found, redirect to create profile page
-          router.replace('/create-profile');
-        } finally {
-          setProfileLoading(false);
-        }
+      if (!user || !wallets || wallets.length === 0) return;
+
+      setProfileLoading(true);
+      try {
+        const playerPubkey = wallets[0].address;
+        await fetchPlayerProfile(playerPubkey);
+        console.log(playerPubkey);
+        router.replace('/(tabs)/temp');
+      } catch (error) {
+        router.replace('/create-profile');
+      } finally {
+        setProfileLoading(false);
       }
     };
 
     handleUserLogin();
-  }, [user]);
+  }, [user, wallets]);
 
   if (!isReady || profileLoading) {
     return (
@@ -143,15 +141,6 @@ export default function LoginScreen() {
       </View>
     );
   }
-
-  return (
-    <View style={styles.centered}>
-      <Text style={styles.text}>
-        Welcome 👋
-      </Text>
-      <Button title="Logout" onPress={logout} />
-    </View>
-  );
 }
 
 const styles = StyleSheet.create({

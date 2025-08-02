@@ -14,7 +14,6 @@ import { StatusBar } from 'expo-status-bar';
 const PRIVY_APP_ID = Constants.expoConfig?.extra?.PRIVY_APP_ID;
 const PRIVY_CLIENT_ID = Constants.expoConfig?.extra?.PRIVY_CLIENT_ID;
 console.log('PRIVY IDs:', { PRIVY_APP_ID, PRIVY_CLIENT_ID });
-
 export default function RootLayout() {
   return (
     <PrivyProvider appId={PRIVY_APP_ID} clientId={PRIVY_CLIENT_ID} config={{
@@ -26,7 +25,7 @@ export default function RootLayout() {
     }}>
       <SafeAreaProvider>
         <StatusBar style="auto" />
-        <Stack>
+        <Stack initialRouteName='index'>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="pact-dashboard" options={{ title: 'Pact Dashboard', headerStyle: { backgroundColor: Colors.dark.background }, headerTintColor: Colors.dark.tint }} />
           <Stack.Screen name="create-pact" options={{ title: 'Create Pact', headerStyle: { backgroundColor: Colors.dark.background }, headerTintColor: Colors.dark.tint }} />
