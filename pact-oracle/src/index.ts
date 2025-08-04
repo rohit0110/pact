@@ -317,8 +317,8 @@ app.listen(port, async () => {
   console.log(`Server is listening on port ${port}`);
   cron.schedule('0 * * * *', runIndexerAndShit);
 
-  // Schedule the hourly check 0
-  cron.schedule('0 * * * *', runHourlyCheck);
+  // Schedule the hourly check 0:05
+  cron.schedule('55 * * * *', runHourlyCheck);
 
   // Schedule the end-of-day pact check 0 0
   cron.schedule('0 0 * * *', runEndOfDayCheck);

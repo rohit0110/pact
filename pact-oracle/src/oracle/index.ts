@@ -79,10 +79,7 @@ export async function runHourlyCheck() {
     });
     const program = new Program<Pact>(IDL, process.env.PROGRAM_ID!, provider);
 
-    // Step 1: Run the indexer to sync on-chain data to the local DB
-    await runIndexer(connection, program);
-
-    // Step 2: Perform the oracle checks using the now-synced data
+    // Step 1: Perform the oracle checks using the now-synced data
     console.log('Starting GitHub oracle checks...');
     const db = await openDb();
     const activePacts = await db.all("SELECT * FROM pacts WHERE status = 'active'");
