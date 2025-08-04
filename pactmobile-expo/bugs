@@ -3,3 +3,5 @@
 7) Not showing the comparator operator anywhere
 8) Need option to boot people from pact
 9) Need option to unstake and leave pact
+10) Unable to have 2 profiles on, at the same time, [Error: No valid authorization signatures were provided. Your payload may be malformed or your signing keys may be incorrect or expired. Docs: https://docs.privy.io/api-reference/authorization-signatures]
+[Seems critical]

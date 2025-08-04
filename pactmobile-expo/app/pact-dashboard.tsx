@@ -220,8 +220,14 @@ export default function PactDashboardPage() {
                 <View key={index} style={styles.participantCard}>
                   <ThemedText style={styles.participantName} numberOfLines={1}>{participantNames[p.pubkey] || p.pubkey}</ThemedText>
                   <View style={styles.participantStatus}>
-                    <IconSymbol name="checkmark.circle.fill" size={16} color={DesignSystem.colors.neonMintVibrant} />
-                    <ThemedText style={styles.participantStatusText}>Staked</ThemedText>
+                    {p.has_staked ? (
+                      <>
+                        <IconSymbol name="checkmark.circle.fill" size={16} color={DesignSystem.colors.neonMintVibrant} />
+                        <ThemedText style={styles.participantStatusText}>Staked</ThemedText>
+                      </>
+                    ) : (
+                      <ThemedText style={[styles.participantStatusText, {color: DesignSystem.colors.icyAqua}]}>Waiting to Stake</ThemedText>
+                    )}
                   </View>
                 </View>
               ))}

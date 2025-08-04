@@ -106,13 +106,10 @@ export default function JoinPactPage() {
         </View>
 
         <View style={styles.chartContainer}>
-          <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-            <AnimatedPieChart active={activeParticipants.length} total={participants.length} />
-            <View style={{ position: 'absolute', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
-              <ThemedText style={styles.chartLabel}>{`${activeParticipants.length} Active`}</ThemedText>
-              <ThemedText style={styles.chartSubLabel}>{`/ ${participants.length} Total`}</ThemedText>
-            </View>
-          </View>
+          <AnimatedPieChart active={activeParticipants.length} total={participants.length}>
+            <ThemedText style={styles.chartLabel}>{`${activeParticipants.length} Active`}</ThemedText>
+            <ThemedText style={styles.chartSubLabel}>{`/ ${participants.length} Total`}</ThemedText>
+          </AnimatedPieChart>
         </View>
 
         <View style={styles.participantsListContainer}>
@@ -121,8 +118,14 @@ export default function JoinPactPage() {
             <View key={index} style={styles.participantCard}>
               <ThemedText style={styles.participantName} numberOfLines={1}>{participantNames[p.pubkey] || p.pubkey}</ThemedText>
               <View style={styles.participantStatus}>
-                <IconSymbol name="checkmark.circle.fill" size={16} color={DesignSystem.colors.neonMintVibrant} />
-                <ThemedText style={styles.participantStatusText}>Staked</ThemedText>
+                {p.has_staked ? (
+                  <>
+                    <IconSymbol name="checkmark.circle.fill" size={16} color={DesignSystem.colors.neonMintVibrant} />
+                    <ThemedText style={styles.participantStatusText}>Staked</ThemedText>
+                  </>
+                ) : (
+                  <ThemedText style={[styles.participantStatusText, {color: DesignSystem.colors.icyAqua}]}>Waiting to Stake</ThemedText>
+                )}
               </View>
             </View>
           ))}
